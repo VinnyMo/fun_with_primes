@@ -5,9 +5,29 @@ let currentMaxIndex = 10000000000; // Default fallback
 // Fetch current database limits
 async function fetchCurrentLimits() {
     try {
-        const response = await fetch(window.location.origin + '/prime-generator/stats');
+        // Construct stats URL relative to current path
+        const currentPath = window.location.pathname;
+        let statsUrl;
+        
+        if (currentPath.includes('/prime-generator/')) {
+            // We're already in the prime-generator path, use relative stats
+            statsUrl = window.location.origin + '/prime-generator/stats';
+        } else {
+            // Direct access to port 3007
+            statsUrl = window.location.origin + '/stats';
+        }
+        
+        console.log('Fetching stats from:', statsUrl);
+        const response = await fetch(statsUrl);
+        
+        if (!response.ok) {
+            throw new Error(`Stats request failed: ${response.status} ${response.statusText}`);
+        }
+        
         const stats = await response.json();
+        console.log('Stats received:', stats);
         currentMaxIndex = stats.database.max_prime_index || 0;
+        console.log('Updated currentMaxIndex to:', currentMaxIndex);
         
         // Update the UI
         const limitDisplay = document.getElementById('current-limit');
@@ -45,10 +65,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch current limits on page load
     fetchCurrentLimits();
     
+    // Add refresh button functionality
+    const refreshButton = document.getElementById('refresh-limits');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', () => {
+            console.log('Manual refresh requested');
+            fetchCurrentLimits();
+        });
+    }
+    
     // Auto-refresh limits every 30 seconds if database is building
     setInterval(async () => {
         try {
-            const response = await fetch(window.location.origin + '/prime-generator/stats');
+            // Use same URL construction logic as fetchCurrentLimits
+            const currentPath = window.location.pathname;
+            let statsUrl;
+            
+            if (currentPath.includes('/prime-generator/')) {
+                statsUrl = window.location.origin + '/prime-generator/stats';
+            } else {
+                statsUrl = window.location.origin + '/stats';
+            }
+            
+            const response = await fetch(statsUrl);
             const stats = await response.json();
             if (stats.database.status === 'in_progress') {
                 fetchCurrentLimits();

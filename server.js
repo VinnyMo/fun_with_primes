@@ -7,6 +7,9 @@ const { getPrimeDatabaseInstance } = require('./lib/prime-database');
 const app = express();
 const PORT = 3007;
 
+// Trust proxy since we're behind nginx
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
     contentSecurityPolicy: {
