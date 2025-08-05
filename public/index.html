@@ -4,11 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Core Prime Generator</title>
-    <link rel="stylesheet" href="css/styles.css?v=2025080506">
+    <link rel="stylesheet" href="css/styles.css?v=2025080508">
     <meta name="description" content="High-performance multi-core prime number generator with real-time statistics">
     <meta name="keywords" content="prime numbers, mathematics, web workers, performance, sieve of eratosthenes">
 </head>
 <body>
+    <div id="api-panel">
+        <h3>Database API</h3>
+        <div class="api-description">
+            <span class="api-icon">🚀</span>
+            <span class="api-text">10 billion pre-computed primes</span>
+        </div>
+        <div class="api-promo">
+            Need more primes, faster? Check out our ultra-fast API! Get any prime by index with sub-10ms response times.
+        </div>
+        <a href="api" class="api-btn">
+            <span class="api-btn-icon">📖</span>
+            <span class="api-btn-text">API Documentation</span>
+        </a>
+    </div>
+
     <div id="stats-panel">
         <h3>Client-Side Statistics</h3>
         <div class="client-side-badge">
@@ -35,18 +50,6 @@
             <span class="label">Total Calculation Time:</span>
             <span id="total-calc-time">0.0s</span>
         </div>
-    </div>
-
-    <div id="api-panel">
-        <h3>Database API</h3>
-        <div class="api-description">
-            <span class="api-icon">🚀</span>
-            <span class="api-text">10 billion pre-computed primes</span>
-        </div>
-        <a href="api" class="api-btn">
-            <span class="api-btn-icon">📖</span>
-            <span class="api-btn-text">API Documentation</span>
-        </a>
     </div>
 
     <div id="main-content">
