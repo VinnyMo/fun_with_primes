@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Core Prime Generator</title>
+    <link rel="stylesheet" href="css/styles.css?v=2025080501">
+    <meta name="description" content="High-performance multi-core prime number generator with real-time statistics">
+    <meta name="keywords" content="prime numbers, mathematics, web workers, performance, sieve of eratosthenes">
+</head>
+<body>
+    <div id="stats-panel">
+        <h3>Statistics</h3>
+        <div class="stat-item">
+            <span class="label">CPU Cores:</span>
+            <span id="core-count">-</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Primes Generated:</span>
+            <span id="prime-count">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Current Range:</span>
+            <span id="current-range">2 - 100</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Largest Prime:</span>
+            <span id="largest-prime">2</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Total Calculation Time:</span>
+            <span id="total-calc-time">0.0s</span>
+        </div>
+        
+        <div class="stats-api-link">
+            <a href="api" class="stats-api-btn">
+                <span class="api-icon">🔗</span>
+                <span class="api-text">API Docs</span>
+            </a>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div class="header-section">
+            <h1>Multi-Core Prime Number Generator</h1>
+        </div>
+        <div id="prime-container"></div>
+        <div id="loading-indicator" style="display: none;">Generating primes...</div>
+        <div id="scroll-hint">Scroll down to generate more primes</div>
+    </div>
+
+    <!-- Prime Modal -->
+    <div id="prime-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Prime Number Details</h2>
+            <div id="modal-prime-info"></div>
+        </div>
+    </div>
+
+    <!-- Cloudflare Analytics (replace with your actual token or remove) -->
+    
+    <script src="js/app.js?v=2025080501"></script>
+</body>
+</html>

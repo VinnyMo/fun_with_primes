@@ -1,0 +1,27 @@
+{
+  "name": "prime-generator-web",
+  "version": "1.0.0",
+  "description": "Multi-core prime number generator with progressive loading and real-time statistics",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build-db": "node scripts/build-prime-database.js",
+    "db-stats": "node scripts/database-stats.js",
+    "fix-status": "node scripts/fix-status.js"
+  },
+  "keywords": [
+    "primes",
+    "web-workers",
+    "mathematics",
+    "performance"
+  ],
+  "author": "Vincent Mossman",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^7.0.0",
+    "sqlite3": "^5.1.6"
+  }
+}

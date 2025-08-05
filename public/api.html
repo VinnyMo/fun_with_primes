@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Generator API Documentation</title>
+    <link rel="stylesheet" href="css/styles.css?v=2025080504">
+    <link rel="stylesheet" href="css/api-styles.css?v=2025080504">
+    <meta name="description" content="API documentation for the Prime Generator service - get prime numbers by index via REST API">
+    <meta name="keywords" content="prime numbers, API, REST, mathematics, JSON">
+</head>
+<body>
+    <div id="api-container">
+        <nav class="api-nav">
+            <a href="./" class="nav-link">← Back to Generator</a>
+            <h1>Prime Generator API</h1>
+        </nav>
+
+        <div class="api-content">
+            <section class="api-section">
+                <h2>Overview</h2>
+                <p>The Prime Generator API provides lightning-fast access to a pre-computed database of prime numbers. Get any prime by its index position with sub-10ms response times. The database grows dynamically as more primes are computed.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🚀 Lightning Fast</h3>
+                        <p>Database-driven lookups with intelligent caching - 1-8ms response times</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>✨ Simple</h3>
+                        <p>Clean JSON responses with just the index and prime number</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔗 RESTful</h3>
+                        <p>Simple HTTP GET requests with JSON responses</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="api-section">
+                <h2>Endpoints</h2>
+                
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method">GET</span>
+                        <span class="url">/prime-generator/api?pi={index}</span>
+                    </div>
+                    <p class="endpoint-description">Get the nth prime number (1-indexed) from our 10 billion prime database.</p>
+                    
+                    <h4>Parameters</h4>
+                    <table class="params-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>pi</code></td>
+                                <td>integer</td>
+                                <td>Yes</td>
+                                <td>Prime index (1 to current maximum). Use /stats endpoint to check current limit. Example: pi=1 returns 2 (first prime)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>Example Requests</h4>
+                    <div class="code-block">
+                        <code>GET https://vincentmossman.com/prime-generator/api?pi=100</code><br>
+                        <code>GET https://vincentmossman.com/prime-generator/api?pi=1000000</code><br>
+                        <code>GET https://vincentmossman.com/prime-generator/api?pi=1000000000</code>
+                    </div>
+
+                    <h4>Example Responses</h4>
+                    <div class="code-block">
+<pre>// 100th prime
+{
+  "index": 100,
+  "prime": 541
+}
+
+// 1 millionth prime
+{
+  "index": 1000000,
+  "prime": 15485863
+}
+
+// 1 billionth prime
+{
+  "index": 1000000000,
+  "prime": 22801763489
+}</pre>
+                    </div>
+
+                    <h4>Response Fields</h4>
+                    <table class="params-table">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>index</code></td>
+                                <td>integer</td>
+                                <td>The requested prime index</td>
+                            </tr>
+                            <tr>
+                                <td><code>prime</code></td>
+                                <td>integer</td>
+                                <td>The prime number at the given index</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="api-section">
+                <h2>Database Stats Endpoint</h2>
+                
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method">GET</span>
+                        <span class="url">/prime-generator/stats</span>
+                    </div>
+                    <p class="endpoint-description">Get current database statistics including maximum available prime index and build progress.</p>
+                    
+                    <h4>Example Response</h4>
+                    <div class="code-block">
+<pre>{
+  "database": {
+    "max_prime_index": 55000000,
+    "total_segments": 55,
+    "status": "in_progress",
+    "target_count": 10000000000
+  },
+  "cache": {
+    "cacheSize": 5,
+    "maxCacheSize": 100
+  },
+  "timestamp": "2025-08-05T15:30:45.123Z",
+  "version": "2025-08-05-dynamic"
+}</pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="api-section">
+                <h2>Error Responses</h2>
+                
+                <div class="error-example">
+                    <h4>Invalid Index (400 Bad Request)</h4>
+                    <div class="code-block">
+<pre>{
+  "error": "Invalid prime index",
+  "message": "Index must be between 1 and 55,000,000",
+  "current_max": 55000000,
+  "requested": 100000000,
+  "suggestion": "Try a smaller index"
+  "example": "/prime-generator/api?pi=5"
+}</pre>
+                    </div>
+                </div>
+
+                <div class="error-example">
+                    <h4>Rate Limit Exceeded (429 Too Many Requests)</h4>
+                    <div class="code-block">
+<pre>{
+  "error": "Server busy - rate limit exceeded",
+  "message": "Too many requests. Please try again in 1 second.",
+  "limit": 5,
+  "window": "1 second",
+  "suggestion": "For bulk requests, add delays between calls"
+}</pre>
+                    </div>
+                </div>
+
+                <div class="error-example">
+                    <h4>Database Lookup Failed (500 Internal Server Error)</h4>
+                    <div class="code-block">
+<pre>{
+  "error": "Prime lookup failed",
+  "message": "Unable to retrieve the requested prime from database",
+  "index": 15000000000
+}</pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="api-section">
+                <h2>API Testing</h2>
+                <p>Test the API directly from this page. Enter a prime index and see the live response.</p>
+                
+                <div class="test-area">
+                    <div class="test-input">
+                        <label for="prime-index">Prime Index:</label>
+                        <input type="number" id="prime-index" min="1" value="10" placeholder="Enter index">
+                        <div id="current-limit" style="font-size: 12px; color: #666; margin-top: 4px;">Loading current limit...</div>
+                        <button id="test-btn">Test API</button>
+                    </div>
+                    
+                    <div class="test-url">
+                        <strong>Request URL:</strong>
+                        <span id="test-url-display">https://vincentmossman.com/prime-generator/api?pi=10</span>
+                    </div>
+                    
+                    <div class="test-results">
+                        <div class="result-header">
+                            <strong>Response:</strong>
+                            <span id="response-status" class="status-badge">Ready</span>
+                        </div>
+                        <div id="test-response" class="response-display">Click "Test API" to see the response</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="api-section">
+                <h2>Usage Examples</h2>
+                
+                <div class="usage-examples">
+                    <div class="example-card">
+                        <h4>JavaScript (Fetch)</h4>
+                        <div class="code-block">
+<pre>// Get the 1 millionth prime
+fetch('https://vincentmossman.com/prime-generator/api?pi=1000000')
+  .then(response => response.json())
+  .then(data => {
+    console.log(\`The ${data.index.toLocaleString()}th prime is: ${data.prime.toLocaleString()}\`);
+    // Output: "The 1,000,000th prime is: 15,485,863"
+  })
+  .catch(err => console.error('API Error:', err));</pre>
+                        </div>
+                    </div>
+
+                    <div class="example-card">
+                        <h4>Python (Requests)</h4>
+                        <div class="code-block">
+<pre>import requests
+import time
+
+# Test large prime lookup performance
+start = time.time()
+response = requests.get('https://vincentmossman.com/prime-generator/api?pi=500000000')
+data = response.json()
+end = time.time()
+
+print(f"The {data['index']:,}th prime is: {data['prime']:,}")
+print(f"Network + lookup time: {(end-start)*1000:.1f}ms")
+# Typical output: "Network + lookup time: 45.2ms"</pre>
+                        </div>
+                    </div>
+
+                    <div class="example-card">
+                        <h4>cURL</h4>
+                        <div class="code-block">
+<pre># Get a large prime quickly
+curl "https://vincentmossman.com/prime-generator/api?pi=100000000" \
+  -H "Accept: application/json" \
+  -w "Response time: %{time_total}s\n"
+
+# Batch multiple requests
+for i in 1000000 10000000 100000000; do
+  echo "Prime #$i:"
+  curl -s "https://vincentmossman.com/prime-generator/api?pi=$i" | jq
+done</pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="api-section">
+                <h2>Rate Limiting & Performance</h2>
+                <ul class="info-list">
+                    <li><strong>Rate Limit:</strong> 5 API requests per second per IP address (429 error if exceeded)</li>
+                    <li><strong>Database:</strong> Pre-computed 10 billion primes with intelligent segment caching</li>
+                    <li><strong>Max Index:</strong> Dynamic based on database build progress - check /stats endpoint for current limit</li>
+                    <li><strong>Response Time:</strong> 1-8ms database lookup + network latency (typically under 50ms total)</li>
+                    <li><strong>Concurrency:</strong> Handles multiple simultaneous requests efficiently</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <script src="js/api.js?v=2025080504"></script>
+</body>
+</html>

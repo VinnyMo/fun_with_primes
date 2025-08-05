@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+    <head>
+      <script src="primality.js"></script>
+      <script src="factor.js"></script>
+      <script src="eratosthenes.js"></script>
+      <script type="text/javascript">
+
+        function arraySum(arr) {
+          n=0;
+          for (i=0; i<arr.length; i++) {
+            n+=arr[i];
+          }
+          return n;
+        }
+
+        function determinePrimality() {
+          var test = document.getElementById("test").value;
+          if (isPrime(test)) {
+            document.getElementById("primality-result").innerHTML = test + " is Prime";
+            document.getElementById("composite-factors").innerHTML = "";
+            document.getElementById("perfect-number").innerHTML = "";
+          } else {
+            document.getElementById("primality-result").innerHTML = test + " is Composite";
+            if (document.getElementById("extras").checked == true) {
+              document.getElementById("composite-factors").innerHTML = "and its " + factors(test).length + " factors are " + factors(test).toString();
+              console.log(factors(test));
+              if (arraySum(factors(test)) / 2 == test) {
+                document.getElementById("perfect-number").innerHTML = "And it is a <a href='#'>perfect number</a>";
+              }
+            }
+          }
+          if (document.getElementById("extras").checked == true) {
+            document.getElementById("eratosthenes").innerHTML = "Here is a list of primes to " + test + ": " + eratosthenesReduced(test).toString();
+          }
+        }
+
+      </script>
+
+      <style>
+
+        @import url('https://fonts.googleapis.com/css?family=Lobster+Two:400,400i,700,700i|Open+Sans:300,300i,400,400i,600,600i,700,700i,800,800i|Russo+One');
+
+        h1 {
+          font-family: 'Lobster Two';
+          padding: 10px;
+        }
+
+        body {
+          background: linear-gradient(90deg, hsl(60, 100%, 50%), hsl(50, 100%, 30%));
+        }
+
+        p {
+          word-wrap: break-word;
+        }
+
+      </style>
+    </head>
+    <body>
+
+      <h1>funWithPrimes<span style="font-family:'Russo One'"> Construction Zone</span></h1>
+      <input id="test" placeholder="Enter a Number">
+      <input type="button" onclick="determinePrimality()" value="Determine Primality">
+      Extras: <input type="checkbox" id="extras">
+      <p id="primality-result"></p>
+      <hr>
+      <p id="composite-factors"></p>
+      <p id="perfect-number"></p>
+      <p id="eratosthenes"></p>
+      <hr>
+      <h2><u>Running Notes</u></h2>
+      <ul>
+        <li>Make eratosthenesFull more like C version (natural decomposition)</li>
+      </ul>
+
+    </body>
+</html>
