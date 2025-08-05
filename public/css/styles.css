@@ -29,6 +29,31 @@ body {
     font-size: 14px;
 }
 
+#api-panel {
+    position: fixed;
+    top: 20px;
+    right: 290px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 20px;
+    min-width: 220px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 1000;
+    font-size: 14px;
+}
+
+#api-panel h3 {
+    margin-bottom: 15px;
+    color: #2d3748;
+    font-weight: 600;
+    font-size: 16px;
+    text-align: center;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
 #stats-panel h3 {
     margin-bottom: 15px;
     color: #2d3748;
@@ -72,7 +97,7 @@ body {
 }
 
 #main-content {
-    margin-right: 290px; /* Space for stats panel */
+    margin-right: 530px; /* Space for both panels */
     padding: 40px 40px 40px 60px;
 }
 
@@ -136,9 +161,9 @@ h1 {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     max-height: none;
     margin-bottom: 30px;
     
@@ -150,16 +175,17 @@ h1 {
 
 .prime-number {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 400;
     color: #2d3748;
-    text-align: center;
-    padding: 6px 8px;
+    text-align: left;
+    padding: 8px 12px;
     background: #f7fafc;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
+    width: 100%;
     
     /* GPU performance optimizations */
     transform: translateZ(0);
@@ -229,13 +255,22 @@ h1 {
 }
 
 /* Responsive design */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
     #main-content {
         margin-right: 0;
         padding: 20px;
     }
     
     #stats-panel {
+        position: relative;
+        top: 0;
+        right: 0;
+        margin: 0 auto 20px;
+        width: 100%;
+        max-width: 400px;
+    }
+    
+    #api-panel {
         position: relative;
         top: 0;
         right: 0;
@@ -251,17 +286,15 @@ h1 {
     }
     
     #prime-container {
-        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-        gap: 6px 8px;
         padding: 20px;
     }
     
     .prime-number {
-        font-size: 12px;
-        padding: 4px 6px;
+        font-size: 14px;
+        padding: 6px 10px;
     }
     
-    #stats-panel {
+    #stats-panel, #api-panel {
         padding: 15px;
         min-width: auto;
     }
@@ -394,14 +427,56 @@ html {
     font-weight: 500;
 }
 
-/* Stats panel API link */
-.stats-api-link {
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid #e2e8f0;
+/* Client-side badge */
+.client-side-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 15px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
 }
 
-.stats-api-btn {
+.badge-icon {
+    font-size: 13px;
+}
+
+/* Header tagline */
+.client-side-tagline {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    font-weight: 400;
+    margin-top: 10px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* API panel styles */
+.api-description {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 6px;
+    color: #4a5568;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.api-description .api-icon {
+    font-size: 16px;
+}
+
+.api-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -418,23 +493,22 @@ html {
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.stats-api-btn:hover {
+.api-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
     background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
 }
 
-.api-icon {
+.api-btn-icon {
     font-size: 14px;
 }
 
-.api-text {
+.api-btn-text {
     font-weight: 600;
 }
 
 /* Performance indicator */
 .more-primes-indicator {
-    grid-column: 1 / -1;
     text-align: center;
     margin: 20px 0;
     padding: 20px;

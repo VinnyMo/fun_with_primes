@@ -1,0 +1,34 @@
+[Unit]
+Description=Prime Generator API Server
+Documentation=https://github.com/vincentmossman/fun_with_primes
+After=network.target
+
+[Service]
+Type=simple
+User=maestro
+Group=maestro
+WorkingDirectory=/home/maestro/fun_with_primes
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=PORT=3007
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/maestro/fun_with_primes/database
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=prime-generator
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

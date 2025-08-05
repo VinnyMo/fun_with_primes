@@ -122,12 +122,15 @@ class PrimeGeneratorApp {
     displayPrimes() {
         const container = document.getElementById('prime-container');
         
+        // Store current scroll position to prevent jumping
+        const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
         // Use virtual scrolling approach - only show what's needed
         const maxDisplayedPrimes = 1000; // Limit for performance
         const primesToShow = this.allPrimes.slice(0, maxDisplayedPrimes);
         
-        // Batch DOM updates using requestAnimationFrame
-        this.scheduleDisplayUpdate(container, primesToShow);
+        // Only append new primes instead of replacing all
+        this.appendNewPrimes(container, primesToShow);
         
         console.log(`Displaying ${primesToShow.length} of ${this.allPrimes.length} primes. First: ${this.allPrimes[0]}, Last: ${primesToShow[primesToShow.length - 1]}`);
         
@@ -135,46 +138,60 @@ class PrimeGeneratorApp {
         if (this.allPrimes.length > maxDisplayedPrimes) {
             this.showMorePrimesIndicator(maxDisplayedPrimes);
         }
+        
+        // Restore scroll position to prevent jumping
+        window.scrollTo(0, currentScrollTop);
     }
 
-    scheduleDisplayUpdate(container, primesToShow) {
-        // Use requestAnimationFrame for smooth updates
-        requestAnimationFrame(() => {
-            // Use efficient batch processing
-            const batchSize = 100;
-            let currentIndex = 0;
-            
-            const processBatch = () => {
-                const fragment = document.createDocumentFragment();
-                const endIndex = Math.min(currentIndex + batchSize, primesToShow.length);
+    appendNewPrimes(container, primesToShow) {
+        // Track how many primes are already displayed
+        const currentPrimeElements = container.querySelectorAll('.prime-number');
+        const alreadyDisplayed = currentPrimeElements.length;
+        
+        // Only add new primes that aren't already displayed
+        const newPrimes = primesToShow.slice(alreadyDisplayed);
+        
+        if (newPrimes.length > 0) {
+            requestAnimationFrame(() => {
+                // Use efficient batch processing for new primes only
+                const batchSize = 50;
+                let currentIndex = 0;
                 
-                // Clear container only on first batch
-                if (currentIndex === 0) {
-                    container.innerHTML = '';
-                }
+                const processBatch = () => {
+                    const fragment = document.createDocumentFragment();
+                    const endIndex = Math.min(currentIndex + batchSize, newPrimes.length);
+                    
+                    for (let i = currentIndex; i < endIndex; i++) {
+                        const primeElement = document.createElement('div');
+                        primeElement.className = 'prime-number';
+                        primeElement.textContent = newPrimes[i].toLocaleString();
+                        fragment.appendChild(primeElement);
+                    }
+                    
+                    container.appendChild(fragment);
+                    currentIndex = endIndex;
+                    
+                    // Continue processing if more batches remain
+                    if (currentIndex < newPrimes.length) {
+                        requestAnimationFrame(processBatch);
+                    }
+                };
                 
-                for (let i = currentIndex; i < endIndex; i++) {
-                    const primeElement = document.createElement('div');
-                    primeElement.className = 'prime-number';
-                    primeElement.textContent = primesToShow[i].toLocaleString();
-                    fragment.appendChild(primeElement);
-                }
-                
-                container.appendChild(fragment);
-                currentIndex = endIndex;
-                
-                // Continue processing if more batches remain
-                if (currentIndex < primesToShow.length) {
-                    requestAnimationFrame(processBatch);
-                }
-            };
-            
-            processBatch();
-        });
+                processBatch();
+            });
+        }
     }
 
     showMorePrimesIndicator(displayedCount) {
         const container = document.getElementById('prime-container');
+        
+        // Remove existing indicator if present
+        const existingIndicator = container.querySelector('.more-primes-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        // Add new indicator
         const indicator = document.createElement('div');
         indicator.className = 'more-primes-indicator';
         indicator.innerHTML = `
@@ -258,7 +275,8 @@ class PrimeGeneratorApp {
     // Performance monitoring methods
     clearAllPrimes() {
         // Clear displayed primes
-        document.getElementById('prime-container').innerHTML = '';
+        const container = document.getElementById('prime-container');
+        container.innerHTML = '';
         
         // Reset state
         this.allPrimes = [];
