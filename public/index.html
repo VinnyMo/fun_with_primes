@@ -3,110 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prime Generator - Ultra-Fast Multi-Core Prime Numbers</title>
-    <link rel="stylesheet" href="css/styles.css?v=2025102801">
-    <meta name="description" content="High-performance multi-core prime number generator with real-time statistics and database API">
-    <meta name="keywords" content="prime numbers, mathematics, web workers, performance, sieve of eratosthenes">
+    <title>Fun With Primes</title>
+    <link rel="stylesheet" href="css/styles.css?v=20251112002">
+    <meta name="description" content="Infinite scrolling prime number generator">
+    <meta name="keywords" content="prime numbers, mathematics">
     <meta name="theme-color" content="#6366f1">
 </head>
 <body>
     <!-- Gradient Background Overlay -->
     <div class="gradient-overlay"></div>
 
-    <!-- API Panel -->
-    <aside id="api-panel" class="glass-panel">
-        <div class="panel-header">
-            <span class="panel-icon">🗄️</span>
-            <h3>Database API</h3>
-        </div>
-        <div class="api-stats">
-            <div class="api-stat">
-                <span class="stat-number">10B</span>
-                <span class="stat-label">Primes Ready</span>
-            </div>
-            <div class="api-stat">
-                <span class="stat-number">&lt;10ms</span>
-                <span class="stat-label">Response Time</span>
-            </div>
-        </div>
-        <div class="api-promo">
-            Ultra-fast prime lookups by index. Get any of 10 billion pre-computed primes instantly.
-        </div>
-        <a href="api" class="api-btn">
-            <span class="api-btn-icon">📖</span>
-            <span class="api-btn-text">View API Docs</span>
-        </a>
-    </aside>
-
-    <!-- Stats Panel -->
-    <aside id="stats-panel" class="glass-panel">
-        <div class="panel-header">
-            <span class="panel-icon">💻</span>
-            <h3>Live Statistics</h3>
-        </div>
-        <div class="client-side-badge">
-            <span class="badge-dot"></span>
-            <span class="badge-text">Running in your browser</span>
-        </div>
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="label">CPU Cores</span>
-                <span id="core-count" class="value">-</span>
-            </div>
-            <div class="stat-item">
-                <span class="label">Primes Found</span>
-                <span id="prime-count" class="value">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="label">Current Range</span>
-                <span id="current-range" class="value">2 - 100</span>
-            </div>
-            <div class="stat-item">
-                <span class="label">Largest Prime</span>
-                <span id="largest-prime" class="value">2</span>
-            </div>
-            <div class="stat-item">
-                <span class="label">Calc Time</span>
-                <span id="total-calc-time" class="value">0.0s</span>
-            </div>
-        </div>
-    </aside>
-
     <!-- Main Content -->
     <main id="main-content">
         <header class="hero-section">
-            <div class="hero-badge">
-                <span class="badge-pulse"></span>
-                Multi-Core Processing
-            </div>
-            <h1 class="hero-title">
-                Prime Number
-                <span class="gradient-text">Generator</span>
-            </h1>
-            <p class="hero-subtitle">
-                Harness your CPU's full power to generate prime numbers in real-time
-            </p>
-            <div class="hero-features">
-                <div class="feature-chip">
-                    <svg class="chip-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M13 7H7v6h6V7z"/>
-                        <path fill-rule="evenodd" d="M7 2a1 1 0 012 0v1h2V2a1 1 0 112 0v1h2a2 2 0 012 2v2h1a1 1 0 110 2h-1v2h1a1 1 0 110 2h-1v2a2 2 0 01-2 2h-2v1a1 1 0 11-2 0v-1H9v1a1 1 0 11-2 0v-1H5a2 2 0 01-2-2v-2H2a1 1 0 110-2h1V9H2a1 1 0 010-2h1V5a2 2 0 012-2h2V2zM5 5h10v10H5V5z" clip-rule="evenodd"/>
-                    </svg>
-                    Web Workers
-                </div>
-                <div class="feature-chip">
-                    <svg class="chip-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                    </svg>
-                    Real-Time
-                </div>
-                <div class="feature-chip">
-                    <svg class="chip-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
-                    </svg>
-                    High Performance
-                </div>
-            </div>
+            <h1 class="hero-title">Fun With Primes</h1>
         </header>
 
         <section class="prime-section">
@@ -134,6 +44,6 @@
         </div>
     </div>
 
-    <script src="js/app.js?v=2025080506"></script>
+    <script src="js/app.js?v=20251112001"></script>
 </body>
 </html>

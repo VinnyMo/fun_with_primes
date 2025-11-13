@@ -21,12 +21,12 @@ class PrimeGeneratorApp {
 
     initializeWorkers() {
         console.log(`Initializing ${this.workerCount} workers...`);
-        
+
         for (let i = 0; i < this.workerCount; i++) {
-            const worker = new Worker('js/prime-worker.js');
+            const worker = new Worker('js/prime-worker.js?v=20251112001');
             worker.onmessage = (e) => this.handleWorkerMessage(e, i);
             worker.onerror = (error) => console.error(`Worker ${i} error:`, error);
-            
+
             this.workers.push({
                 worker: worker,
                 id: i,
@@ -37,27 +37,14 @@ class PrimeGeneratorApp {
     }
 
     bindEvents() {
-        let scrollTimeout;
-        
-        // Improved scroll handling - generate earlier to stay ahead
+        // Generate just ahead of scroll position
         window.addEventListener('scroll', () => {
-            clearTimeout(scrollTimeout);
-            
-            // Start generating when 70% through current content (much earlier buffer)
+            // Start generating when 85% through current content (small buffer)
             const scrollPercentage = (window.innerHeight + window.scrollY) / document.body.offsetHeight;
-            
-            if (scrollPercentage > 0.7 && !this.isGenerating) {
-                console.log(`At ${Math.round(scrollPercentage * 100)}% - generating more primes`);
+
+            if (scrollPercentage > 0.85 && !this.isGenerating) {
                 this.generateNextBatch();
             }
-            
-            // Stop generation when scrolling stops
-            scrollTimeout = setTimeout(() => {
-                if (this.isGenerating) {
-                    console.log('Stopping generation - user stopped scrolling');
-                    this.stopGeneration();
-                }
-            }, 2000);
         });
 
         // Prime click handling
@@ -121,24 +108,18 @@ class PrimeGeneratorApp {
 
     displayPrimes() {
         const container = document.getElementById('prime-container');
-        
+
         // Store current scroll position to prevent jumping
         const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        
-        // Use virtual scrolling approach - only show what's needed
-        const maxDisplayedPrimes = 1000; // Limit for performance
-        const primesToShow = this.allPrimes.slice(0, maxDisplayedPrimes);
-        
+
+        // Show all primes (infinite scrolling)
+        const primesToShow = this.allPrimes;
+
         // Only append new primes instead of replacing all
         this.appendNewPrimes(container, primesToShow);
-        
-        console.log(`Displaying ${primesToShow.length} of ${this.allPrimes.length} primes. First: ${this.allPrimes[0]}, Last: ${primesToShow[primesToShow.length - 1]}`);
-        
-        // Show indicator if we have more primes than displayed
-        if (this.allPrimes.length > maxDisplayedPrimes) {
-            this.showMorePrimesIndicator(maxDisplayedPrimes);
-        }
-        
+
+        console.log(`Displaying ${primesToShow.length} primes. First: ${this.allPrimes[0]}, Last: ${primesToShow[primesToShow.length - 1]}`);
+
         // Restore scroll position to prevent jumping
         window.scrollTo(0, currentScrollTop);
     }
@@ -182,27 +163,6 @@ class PrimeGeneratorApp {
         }
     }
 
-    showMorePrimesIndicator(displayedCount) {
-        const container = document.getElementById('prime-container');
-        
-        // Remove existing indicator if present
-        const existingIndicator = container.querySelector('.more-primes-indicator');
-        if (existingIndicator) {
-            existingIndicator.remove();
-        }
-        
-        // Add new indicator
-        const indicator = document.createElement('div');
-        indicator.className = 'more-primes-indicator';
-        indicator.innerHTML = `
-            <div class="indicator-content">
-                + ${(this.allPrimes.length - displayedCount).toLocaleString()} more primes generated<br>
-                <small>Showing first ${displayedCount.toLocaleString()} for performance</small>
-            </div>
-        `;
-        container.appendChild(indicator);
-    }
-
     generateInitialBatch() {
         console.log('Generating initial batch of primes');
         this.generateNextBatch();
@@ -210,28 +170,28 @@ class PrimeGeneratorApp {
 
     generateNextBatch() {
         if (this.isGenerating) return;
-        
+
         this.isGenerating = true;
-        
-        // Calculate range for next batch  
+
+        // Calculate range for next batch - generate smaller batches to match scroll speed
         let start, end;
-        
+
         if (this.allPrimes.length === 0) {
             // First batch - start from 2
             start = 2;
-            end = 2000; // Larger first batch to get ahead
+            end = 500; // Initial batch
         } else {
             // Subsequent batches - continue from where we left off
             start = this.maxPrimeGenerated + 1;
-            end = start + 5000; // Larger batch size to stay ahead of scrolling
+            end = start + 800; // Small batch to stay just ahead of scrolling
         }
-        
-        console.log(`Starting generation from ${start} to ${end}`);
-        
+
+        console.log(`Generating primes from ${start} to ${end}`);
+
         // Use first available worker
         const worker = this.workers[0];
         worker.busy = true;
-        
+
         // Send work to worker
         worker.worker.postMessage({
             type: 'generate',
@@ -239,7 +199,7 @@ class PrimeGeneratorApp {
             end: end,
             workerId: 0
         });
-        
+
         document.getElementById('loading-indicator').style.display = 'block';
     }
 
@@ -256,20 +216,8 @@ class PrimeGeneratorApp {
     // Remove the old complex methods and keep it simple
 
     updateStatistics() {
-        // Update DOM elements
-        document.getElementById('core-count').textContent = this.workerCount;
-        document.getElementById('prime-count').textContent = this.statistics.totalPrimes.toLocaleString();
-        document.getElementById('largest-prime').textContent = this.statistics.largestPrime.toLocaleString();
-        
-        // Update current range
-        const rangeStart = this.allPrimes.length > 0 ? this.allPrimes[0] : 2;
-        const rangeEnd = this.maxPrimeGenerated;
-        document.getElementById('current-range').textContent = 
-            `${rangeStart.toLocaleString()} - ${rangeEnd.toLocaleString()}`;
-        
-        // Update total calculation time
-        const totalSeconds = this.statistics.totalCalculationTime / 1000;
-        document.getElementById('total-calc-time').textContent = `${totalSeconds.toFixed(1)}s`;
+        // Update statistics (no UI elements to update anymore)
+        // Keep the method for compatibility but do nothing
     }
 
     // Performance monitoring methods
