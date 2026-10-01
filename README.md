@@ -1,132 +1,104 @@
-# 🔢 Prime Generator API & Web Interface
+# 🔢 Fun With Primes
 
-A high-performance, database-driven prime number API with lightning-fast lookups and intelligent caching. Features both a REST API for developers and an interactive web interface for exploration.
+A personal showcase of prime-number experiments, from C command-line programs to an interactive browser app.
 
-**🚀 Now supports up to 10 billion primes with sub-10ms response times!**
+[Try the hosted demo](https://vincentmossman.com/prime-generator/)
 
-## ✨ Features
+The current web app generates primes in your browser. Scroll to generate more, then click a prime to explore its properties. This is a legacy learning project; the older C and database experiments are still here to explore.
 
-### 🗃️ Database-Driven API
-- **Lightning Fast**: 1-8ms database lookups with intelligent segment caching
-- **Massive Scale**: Pre-computed database of 10 billion primes (~12-15GB)
-- **Dynamic Scaling**: API automatically expands as database grows
-- **Rate Limited**: 5 requests/second to protect server resources
-- **Delta Compression**: Efficient storage using gap encoding
+## What the web app does
 
-### 🖥️ Interactive Web Interface  
-- **Multi-Core Processing**: Utilizes all available CPU cores via Web Workers
-- **Real-Time Statistics**: Live generation stats and prime properties
-- **Progressive Loading**: Infinite scroll with dynamic loading
-- **Responsive Design**: Works on desktop and mobile devices
+- Generates an initial batch of primes when the page loads
+- Adds more primes as you scroll
+- Runs prime generation in a Web Worker
+- Shows a details modal with a prime's position, binary and hexadecimal representations, digit sum, and prime-type labels
 
-### 🛡️ Security & Performance
-- **Read-only Database**: Secure access with input validation
-- **Rate Limiting**: Protects against abuse while maintaining performance
-- **Helmet Security**: CSP headers and security middleware
+## Run locally
 
-## 🚀 Quick Start
+You need Git, Node.js, npm, and a browser with Web Worker support.
 
-### Installation
 ```bash
-git clone https://github.com/your-username/fun_with_primes.git
+git clone https://github.com/VinnyMo/fun_with_primes.git
 cd fun_with_primes
 npm install
-```
-
-### Build Prime Database
-```bash
-# Build 10 billion prime database (2-4 hours)
-npm run build-db
-
-# Check build progress
-npm run db-stats
-```
-
-### Start Server
-```bash
 npm start
-# Server runs on http://localhost:3007
 ```
 
-Visit `http://localhost:3007` for the interactive interface or `http://localhost:3007/api` for API documentation.
+Open [http://localhost:3007](http://localhost:3007).
 
-## 📡 API Usage
+There is no frontend build step, and you do not need to build a prime database to use the web app. The `sqlite3` dependency remains in `package.json` for the older database tools.
 
-### Get Prime by Index
-```bash
-# Get the 1,000,000th prime
-curl "http://localhost:3007/api?pi=1000000"
-
-# Response
-{
-  "index": 1000000,
-  "prime": 15485863
-}
-```
-
-### Check Database Stats
-```bash
-curl "http://localhost:3007/stats"
-```
-
-### Rate Limits
-- **5 API requests per second** per IP address
-- **429 error** if exceeded with helpful retry message
-
-## 🔧 Scaling Up
-
-Want 100 billion primes? Easy:
-
-1. Edit `TARGET_PRIME_COUNT` in `scripts/build-prime-database.js`
-2. Set to `100_000_000_000` (will use ~116GB)
-3. Run `npm run build-db` (resumes from current progress)
-4. API automatically scales - no code changes needed!
-
-## 🏗️ Architecture
-
-### Database Design
-- **SQLite database** with delta-compressed segments
-- **1M primes per segment** for optimal I/O performance
-- **Variable-length integer encoding** for efficient storage
-- **Read-only access** for security
-
-### Performance
-- **Sub-10ms lookups** for any prime in the database
-- **Intelligent caching** of hot segments
-- **Parallel request handling** with rate limiting
-- **~12-15GB storage** for 10 billion primes
-
-## 📊 Scripts
+To check that the server is responding:
 
 ```bash
-npm start         # Start the server
-npm run build-db  # Build prime database
-npm run db-stats  # Show database statistics
-npm run fix-status # Fix database status (if needed)
+curl http://localhost:3007/test
 ```
 
-## 🖥️ Web Interface
+## How it works
 
-Interactive prime number generator with:
-- **Multi-core web workers** for parallel computation
-- **Real-time statistics** and progress tracking
-- **Responsive design** for mobile and desktop
-- **Prime number details** modal with mathematical properties
+- [`server.js`](server.js) uses Express to serve the static files in `public/` on port 3007, with Helmet headers and request rate limiting. It also exposes the `/test` health-check route.
+- [`public/index.html`](public/index.html) and [`public/css/styles.css`](public/css/styles.css) provide the page layout and styling.
+- [`public/js/app.js`](public/js/app.js) handles scrolling, appends generated primes, and displays the details modal.
+- [`public/js/prime-worker.js`](public/js/prime-worker.js) generates primes with a sieve in a browser worker.
 
-## 📖 Documentation
+The app creates a pool of workers, but the current batch-generation path sends work to the first worker. The active generator uses the simple sieve; a segmented-sieve implementation also remains in the worker source.
 
-- **API Docs**: Visit `/prime-generator/api` for interactive documentation
-- **Live Testing**: Built-in API testing interface
-- **Examples**: JavaScript, Python, and cURL examples included
+The details modal uses a randomized Miller–Rabin check and JavaScript number arithmetic. Treat it as an educational demonstration rather than a tool for cryptography or arbitrary-precision calculations. Long scrolling sessions keep the generated primes in memory, so performance depends on the device and the size of the list.
 
-## 🤝 Contributing
+## Project layout
 
-Feel free to open issues or submit PRs! Some areas for improvement:
-- Additional compression algorithms
-- Distributed database segments
-- WebSocket real-time updates
-- Prime factorization endpoints
+```text
+server.js                    Static-file server and /test route
+public/                      Current browser app and older API-page assets
+javascript/                  Earlier JavaScript experiments
+*.c, timer.h                 C prime-number experiments
+obsolete/                    Older C implementations
+lib/prime-database.js         Historical SQLite access layer
+database/schema.sql          Historical database schema
+scripts/                     Historical database utilities
+prime-generator.service      Existing deployment-specific service file
+```
 
-## 📄 License
+## Historical experiments
+
+### Database-backed API
+
+An earlier version served prime lookups from SQLite. The database API routes and statistics panel were removed in [the November 2025 simplification](https://github.com/VinnyMo/fun_with_primes/commit/91ef3334c68656d319d07e64299176eacd5fcf7a).
+
+The database code, schema, utilities, and `public/api.html` assets remain in the repository. They are optional historical material, not part of the current web app's startup path. The current server does not implement the old `/api` and `/stats` routes; the retained API page describes that earlier version.
+
+These scripts are still defined for exploring the database tooling:
+
+```bash
+npm run build-db   # Build or resume the historical SQLite prime database
+npm run db-stats   # Inspect that database
+npm run fix-status # Update its generation-status metadata
+```
+
+Review the scripts before running them. The builder currently targets 10 billion primes and can consume substantial time, memory, and disk space. It is not a quick-start step, and the repository does not include the generated `database/primes.db` file.
+
+### C and earlier JavaScript
+
+The C sources include primality tests, sieve implementations, prime lists, prime-gap and frequency experiments, and natural-number decomposition. Several source headers contain build and usage notes. These are historical experiments and may need fixes for a current toolchain; they are not required to run the browser app.
+
+The `javascript/` directory contains earlier browser-based prime and factorization experiments.
+
+## Development checks
+
+`npm run dev` runs the same `node server.js` command as `npm start`. There are currently no test, lint, or build scripts in `package.json`.
+
+For a basic manual check after changing the web app:
+
+1. Start the server and open `http://localhost:3007`.
+2. Confirm that the initial prime list appears.
+3. Scroll toward the bottom and check that more primes are added.
+4. Click a prime and check the details modal, then close it.
+5. Request `/test` and check the JSON response.
+
+## Contributing
+
+Feel free to open issues or submit PRs. Keep changes focused and include the steps used to check them.
+
+## License
 
 MIT License - Built with ❤️ by Vincent Mossman.
