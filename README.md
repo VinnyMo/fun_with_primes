@@ -6,6 +6,12 @@ A personal showcase of prime-number experiments, from C command-line programs to
 
 The current web app generates primes in your browser. Scroll to generate more, then click a prime to explore its properties. This is a legacy learning project; the older C and database experiments are still here to explore.
 
+## Project history
+
+This project started with Vincent T. Mossman's [`funWithPrimes`](https://github.com/VinnyMo/funWithPrimes), the original C and early JavaScript research repository. It remains a legacy showcase of those experiments, including [`threadPartialSieve`](https://github.com/VinnyMo/funWithPrimes/blob/master/eratosthenes.c#L168-L182), which divides sieve-marking work across POSIX threads using a shared flag array.
+
+This later repository carries forward the original C sources and adds the browser app described below. The active browser generator is a separate [JavaScript Web Worker implementation](public/js/prime-worker.js).
+
 ## What the web app does
 
 - Generates an initial batch of primes when the page loads
