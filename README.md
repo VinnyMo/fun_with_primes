@@ -70,7 +70,7 @@ The database code, schema, utilities, and `public/api.html` assets remain in the
 These scripts are still defined for exploring the database tooling:
 
 ```bash
-npm run build-db   # Build or resume the historical SQLite prime database
+npm run build-db   # Build the historical SQLite prime database
 npm run db-stats   # Inspect that database
 npm run fix-status # Update its generation-status metadata
 ```
