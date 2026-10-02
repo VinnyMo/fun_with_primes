@@ -4,116 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fun With Primes</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260403001">
-    <meta name="description" content="An infinite, browser-powered prime number generator with live details and smooth scrolling.">
-    <meta name="keywords" content="prime numbers, mathematics, web workers, number theory">
-    <meta name="theme-color" content="#132238">
+    <meta name="description" content="An open-ended sequence of prime numbers. Scroll to generate more on your own device, and select a number to look closer.">
+    <meta name="theme-color" content="#101d2a">
+    <link rel="stylesheet" href="css/styles.css?v=2026100201">
+    <script src="js/prime-math.js?v=2026100201" defer></script>
+    <script src="js/prime-stream.js?v=2026100201" defer></script>
+    <script src="js/app.js?v=2026100201" defer></script>
 </head>
 <body>
-    <div class="page-shell">
-        <div class="page-aura page-aura-left"></div>
-        <div class="page-aura page-aura-right"></div>
+    <a class="skip-link" href="#prime-section">Skip to the primes</a>
+    <main class="page-shell" id="main-content">
+        <header class="intro">
+            <div class="masthead">
+                <a class="home-link" href="/" aria-label="Vincent Mossman’s homepage">VM <span>/</span> little experiments</a>
+                <span class="local-label"><span aria-hidden="true">●</span> On your device</span>
+            </div>
+            <h1>Fun with primes<span aria-hidden="true">.</span></h1>
+            <p class="intro-copy">Keep scrolling. Your device makes more prime numbers as you go.</p>
+        </header>
 
-        <main id="main-content">
-            <header class="hero-section">
-                <p class="eyebrow">vincentmossman.com/prime-generator</p>
-                <div class="hero-copy">
-                    <h1 class="hero-title">Prime numbers, rendered as an endless field.</h1>
-                    <p class="hero-description">
-                        This page generates primes directly in your browser and keeps extending the sequence as you move down the page.
-                        Select any value for position, representation, and quick number-theory context.
-                    </p>
-                </div>
+        <div class="disclosures">
+        <details class="session-stats" id="session-stats">
+            <summary>Session stats <span aria-hidden="true">+</span></summary>
+            <div class="stats-content">
+                <dl class="stats-grid">
+                    <div><dt>Primes explored</dt><dd id="stat-total-primes">0</dd></div>
+                    <div><dt>Largest discovered</dt><dd id="stat-largest-prime">—</dd></div>
+                    <div><dt>Last batch</dt><dd id="stat-last-duration">—</dd></div>
+                </dl>
+                <p>One background worker, no database. Older rows are regenerated when you scroll back. This session pauses at 1 trillion to keep calculations bounded.</p>
+                <button type="button" class="text-button" id="close-stats" hidden>Close stats</button>
+            </div>
+        </details>
 
-                <div class="hero-meta">
-                    <div class="meta-card">
-                        <span class="meta-label">Engine</span>
-                        <strong class="meta-value">Client-side generator</strong>
-                    </div>
-                    <div class="meta-card">
-                        <span class="meta-label">Throughput</span>
-                        <strong class="meta-value">Scroll to expand</strong>
-                    </div>
-                    <div class="meta-card">
-                        <span class="meta-label">Detail view</span>
-                        <strong class="meta-value">Tap any prime</strong>
-                    </div>
-                </div>
-            </header>
+        <details class="session-stats project-story" id="project-story">
+            <summary>About this experiment <span aria-hidden="true">+</span></summary>
+            <div class="story-content">
+                <p class="eyebrow">A small museum of mathematical curiosity</p>
+                <h2>A question that kept growing.</h2>
+                <p>A personal project by Vincent Mossman, from a high-school twin-prime search to college experiments in C and the browser list you can explore today.</p>
+                <p>These early experiments predate today’s AI coding assistants.</p>
+                <ol class="project-timeline" role="list">
+                    <li><p class="eyebrow">c. 2012–2013 · High school</p><h3>Looking for pairs</h3><p>A C++ program checked numbers by trial division, looking for pairs of primes two apart. <span class="date-note">Date recalled by Vincent.</span></p><a href="https://github.com/VinnyMo/highSchool_Yoink/blob/32bdd0ba75e61530b7577b15fed3b85c2faf7f66/Find%20Differenct%20of%20Two%20Prime%20Limit.cpp#L18-L28">The original search ↗</a></li>
+                    <li><p class="eyebrow">2016 · College-era experiments</p><h3>Sharing the work</h3><p>Source updated November 5, 2016. Experiments in C explored prime gaps and sieves. threadPartialSieve split the factor-marking work across four POSIX threads.</p><a href="https://github.com/VinnyMo/funWithPrimes/tree/800da4856724b73361f000551546ec318baa4b46">The C experiments ↗</a></li>
+                    <li><p class="eyebrow">2026 · Browser showcase</p><h3>An open-ended list</h3><p>This 2026 presentation brings the experiments together. Primes are generated in your browser as you scroll.</p><a href="https://github.com/VinnyMo/fun_with_primes">The browser project ↗</a></li>
+                </ol>
+                <article class="code-exhibit" aria-labelledby="exhibit-title">
+                    <p class="eyebrow">From the archive · source updated November 5, 2016</p>
+                    <h3 id="exhibit-title">threadPartialSieve</h3>
+                    <p>Four threads split the sieve’s factor-marking passes, crossing out multiples in one shared array. A college-era experiment Vincent is still proud of.</p>
+                    <pre tabindex="0" aria-label="Historical C function threadPartialSieve"><code>void *threadPartialSieve(void *rank) {
 
-            <section class="dashboard-panel" aria-label="Prime generation statistics">
-                <div class="panel-heading">
-                    <div>
-                        <p class="panel-kicker">Live snapshot</p>
-                        <h2 class="panel-title">Prime stream status</h2>
-                    </div>
-                    <p class="panel-note" id="generation-state">Preparing first batch...</p>
-                </div>
+  long unsigned int i, j;
 
-                <div class="stats-grid">
-                    <article class="stat-card">
-                        <span class="stat-label">Primes shown</span>
-                        <strong class="stat-value" id="stat-total-primes">0</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span class="stat-label">Largest prime</span>
-                        <strong class="stat-value" id="stat-largest-prime">2</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span class="stat-label">Range scanned</span>
-                        <strong class="stat-value" id="stat-range-end">0</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span class="stat-label">Last batch time</span>
-                        <strong class="stat-value" id="stat-last-duration">0 ms</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span class="stat-label">Average batch time</span>
-                        <strong class="stat-value" id="stat-average-duration">0 ms</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span class="stat-label">Worker capacity</span>
-                        <strong class="stat-value" id="stat-worker-count">0</strong>
-                    </article>
-                </div>
-            </section>
+  // run sieve
+  for (i = (long unsigned int) rank+1; i &lt; sqrt(globalN); i+=numberOfThreads) {
+    for (j = i; j &lt; globalN; j+=(i+1)) {
+      if (i &gt; (long unsigned int) rank+1 &amp;&amp; (i+1)%2 == 0) {break;}
+      if (j &gt; i) {
+        isPrimeArray[j] = FALSE;
+      } // end if
+    } // end for (j)
+  } // end for (i)
 
-            <section class="prime-section">
-                <div class="section-heading">
-                    <div>
-                        <p class="panel-kicker">Infinite canvas</p>
-                        <h2 class="panel-title">Generated primes</h2>
-                    </div>
-                    <p class="section-note">The list extends automatically when you get near the end.</p>
-                </div>
-
-                <div id="prime-container" aria-live="polite"></div>
-
-                <div id="loading-indicator" class="loading-indicator" style="display: none;">
-                    <div class="loading-spinner" aria-hidden="true"></div>
-                    <span>Generating the next block of primes...</span>
-                </div>
-
-                <div id="scroll-hint" class="scroll-hint">
-                    <svg class="scroll-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                    Keep scrolling to push the sequence forward.
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <div id="prime-modal" class="modal" style="display: none;">
-        <div class="modal-backdrop"></div>
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="prime-modal-title">
-            <button class="close" aria-label="Close modal">&times;</button>
-            <p class="panel-kicker">Selected value</p>
-            <h2 class="modal-title" id="prime-modal-title">Prime number details</h2>
-            <div id="modal-prime-info"></div>
+} // end threadPartialSieve</code></pre>
+                    <p class="exhibit-caption">Complete function, preserved as written. The caller, shared variables, and thread setup are in the full source.</p>
+                    <p class="exhibit-caption">This historical experiment has unsynchronized shared writes and includes 1 in its output. Today’s list uses a separate JavaScript Web Worker.</p>
+                    <a href="https://github.com/VinnyMo/funWithPrimes/blob/800da4856724b73361f000551546ec318baa4b46/eratosthenes.c#L168-L182">View the original source ↗</a>
+                </article>
+                <button type="button" class="text-button" id="close-story" hidden>Close the story</button>
+            </div>
+        </details>
         </div>
-    </div>
 
-    <script src="js/app.js?v=20260403001"></script>
+        <section id="prime-section" aria-label="Prime number sequence" tabindex="-1">
+            <div class="list-heading">
+                <p>Only divisible by 1 and themselves</p>
+                <span class="select-hint">Select a number <span aria-hidden="true">↗</span></span>
+            </div>
+            <div id="earlier-controls" class="earlier-controls" hidden>
+                <button type="button" class="text-button" id="load-earlier">↑ Load earlier primes</button>
+                <span id="window-range"></span>
+            </div>
+            <div id="prime-container" aria-busy="false"></div>
+            <div class="stream-footer" id="stream-footer" hidden>
+                <p class="generation-state" id="generation-state" role="status" aria-live="polite" aria-atomic="true">Making the first primes…</p>
+                <button type="button" class="more-button" id="load-more">Making primes…</button>
+                <p class="scroll-hint" id="scroll-hint"><span aria-hidden="true">↓</span> There’s always another prime</p>
+            </div>
+            <noscript><p class="noscript">Enable JavaScript to generate primes on your device. Nothing needs to be downloaded beyond this page.</p></noscript>
+        </section>
+        <footer class="site-footer">A small exploration by <a href="/">Vincent Mossman</a> <span aria-hidden="true">·</span> <a href="https://github.com/VinnyMo/fun_with_primes">View the source</a></footer>
+    </main>
+
+    <dialog id="prime-modal" aria-labelledby="prime-modal-title">
+        <div class="modal-heading"><p class="eyebrow" id="modal-position">A closer look</p><button type="button" class="close-button" id="close-modal" aria-label="Close prime details" autofocus>×</button></div>
+        <h2 id="prime-modal-title"></h2>
+        <p class="prime-confirmation">A prime number. No divisors but 1 and itself.</p>
+        <dl id="modal-prime-info" class="prime-details"></dl>
+    </dialog>
 </body>
 </html>

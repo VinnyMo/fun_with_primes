@@ -1,472 +1,267 @@
-// Multi-Core Prime Generator Application
+'use strict';
 class PrimeGeneratorApp {
     constructor() {
-        this.workers = [];
-        this.workerCount = navigator.hardwareConcurrency || 4;
-        this.allPrimes = [];
-        this.maxPrimeGenerated = 1; // Track highest number we've checked
-        this.statistics = {
-            totalPrimes: 0,
-            largestPrime: 2,
-            totalCalculationTime: 0,
-            lastBatchDuration: 0,
-            completedBatches: 0,
-            activeWorkers: 0
-        };
-        this.isGenerating = false;
-        this.primesPerPage = 200; // Only generate this many at a time
+        this.stream = new PrimeStream();
+        this.worker = null;
+        this.pending = null;
+        this.requestId = 0;
+        this.errorDirection = null;
+        this.lastScrollY = window.scrollY;
+        this.scrollFrame = null;
+        this.initialFillUsed = false;
+        this.returnFocus = null;
         this.ui = {};
-        
-        this.cacheElements();
-        this.initializeWorkers();
+        for (const id of ['prime-container', 'generation-state', 'load-more', 'load-earlier', 'earlier-controls', 'window-range', 'stream-footer', 'stat-total-primes', 'stat-largest-prime', 'stat-last-duration', 'prime-modal', 'prime-modal-title', 'modal-position', 'modal-prime-info', 'close-modal', 'session-stats', 'close-stats', 'project-story', 'close-story']) this.ui[id] = document.getElementById(id);
+        this.ui['stream-footer'].hidden = false;
+        this.ui['close-stats'].hidden = false;
+        this.ui['close-story'].hidden = false;
+        this.motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        this.revealObserver = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                if (entry.isIntersecting) {
+                    if (!this.motion.matches) entry.target.classList.add('reveal');
+                    this.revealObserver.unobserve(entry.target);
+                }
+            }
+        }, { threshold: 0.05 }) : null;
         this.bindEvents();
-        this.updateStatistics();
-        this.generateInitialBatch();
-    }
-
-    cacheElements() {
-        this.ui = {
-            container: document.getElementById('prime-container'),
-            loadingIndicator: document.getElementById('loading-indicator'),
-            generationState: document.getElementById('generation-state'),
-            statTotalPrimes: document.getElementById('stat-total-primes'),
-            statLargestPrime: document.getElementById('stat-largest-prime'),
-            statRangeEnd: document.getElementById('stat-range-end'),
-            statLastDuration: document.getElementById('stat-last-duration'),
-            statAverageDuration: document.getElementById('stat-average-duration'),
-            statWorkerCount: document.getElementById('stat-worker-count'),
-            modal: document.getElementById('prime-modal'),
-            modalInfo: document.getElementById('modal-prime-info')
-        };
-    }
-
-    initializeWorkers() {
-        console.log(`Initializing ${this.workerCount} workers...`);
-
-        for (let i = 0; i < this.workerCount; i++) {
-            const worker = new Worker('js/prime-worker.js?v=20251112001');
-            worker.onmessage = (e) => this.handleWorkerMessage(e, i);
-            worker.onerror = (error) => console.error(`Worker ${i} error:`, error);
-
-            this.workers.push({
-                worker: worker,
-                id: i,
-                busy: false,
-                currentRange: null
-            });
-        }
+        this.load('later');
     }
 
     bindEvents() {
-        // Generate just ahead of scroll position
+        this.ui['load-more'].addEventListener('click', () => {
+            this.ui['load-more'].focus({ preventScroll: true });
+            this.load(this.errorDirection || 'later', true);
+        });
+        this.ui['load-earlier'].addEventListener('click', () => {
+            this.ui['load-earlier'].focus({ preventScroll: true });
+            this.load('earlier', true);
+        });
+        this.ui['prime-container'].addEventListener('click', event => {
+            const button = event.target.closest('.prime-number');
+            if (button) this.showPrime(button);
+        });
+        this.ui['close-modal'].addEventListener('click', () => this.ui['prime-modal'].close());
+        this.ui['prime-modal'].addEventListener('click', event => {
+            if (event.target !== this.ui['prime-modal']) return;
+            const rect = this.ui['prime-modal'].getBoundingClientRect();
+            if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) this.ui['prime-modal'].close();
+        });
+        this.ui['prime-modal'].addEventListener('close', () => {
+            if (this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+        });
+        const closeStats = () => {
+            this.ui['session-stats'].open = false;
+            this.ui['session-stats'].querySelector('summary').focus({ preventScroll: true });
+        };
+        this.ui['close-stats'].addEventListener('click', closeStats);
+        this.ui['session-stats'].addEventListener('keydown', event => {
+            if (event.key === 'Escape' && this.ui['session-stats'].open) { event.preventDefault(); closeStats(); }
+        });
+        const closeStory = () => {
+            this.ui['project-story'].open = false;
+            this.ui['project-story'].querySelector('summary').focus();
+        };
+        this.ui['close-story'].addEventListener('click', closeStory);
+        this.ui['project-story'].addEventListener('keydown', event => {
+            if (event.key === 'Escape' && this.ui['project-story'].open) { event.preventDefault(); closeStory(); }
+        });
         window.addEventListener('scroll', () => {
-            // Start generating when 85% through current content (small buffer)
-            const scrollPercentage = (window.innerHeight + window.scrollY) / document.body.offsetHeight;
-
-            if (scrollPercentage > 0.85 && !this.isGenerating) {
-                this.generateNextBatch();
-            }
-        });
-
-        // Prime click handling
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('prime-number')) {
-                const primeValue = parseInt(e.target.dataset.prime || e.target.textContent.replace(/,/g, ''), 10);
-                this.showPrimeModal(primeValue);
-            }
-        });
-
-        // Modal close handling
-        document.addEventListener('click', (e) => {
-            if (
-                e.target === this.ui.modal ||
-                e.target.classList.contains('close') ||
-                e.target.classList.contains('modal-backdrop')
-            ) {
-                this.ui.modal.style.display = 'none';
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.ui.modal.style.display = 'none';
-            }
-        });
-
-        // Performance monitoring
-        setInterval(() => {
-            this.updateStatistics();
-        }, 1000);
-    }
-
-    handleWorkerMessage(e, workerId) {
-        const { type, primes, start, end, duration, primesPerSecond, error } = e.data;
-
-        switch (type) {
-            case 'result':
-                this.workers[workerId].busy = false;
-                this.statistics.activeWorkers--;
-                
-                if (primes && primes.length > 0) {
-                    console.log(`Worker ${workerId} generated ${primes.length} primes from ${start} to ${end} in ${duration}ms`);
-                    console.log(`First few primes:`, primes.slice(0, 10));
-                    
-                    // Add new primes to our collection
-                    this.allPrimes = this.allPrimes.concat(primes);
-                    this.allPrimes.sort((a, b) => a - b); // Keep sorted
-                    
-                    // Display the new primes
-                    this.displayPrimes();
-                    
-                    this.statistics.totalPrimes = this.allPrimes.length;
-                    this.statistics.largestPrime = Math.max(this.statistics.largestPrime, ...primes);
-                    this.statistics.totalCalculationTime += duration || 0;
-                    this.statistics.lastBatchDuration = duration || 0;
-                    this.statistics.completedBatches += 1;
-                    this.maxPrimeGenerated = end;
-                }
-                
-                // This batch is complete, stop generating
-                this.updateStatistics();
-                this.stopGeneration();
-                break;
-
-            case 'error':
-                console.error(`Worker ${workerId} error:`, error);
-                this.workers[workerId].busy = false;
-                this.statistics.activeWorkers = Math.max(0, this.statistics.activeWorkers - 1);
-                this.ui.generationState.textContent = 'A worker failed while generating primes.';
-                this.stopGeneration();
-                break;
-        }
-    }
-
-    displayPrimes() {
-        const container = this.ui.container;
-
-        // Store current scroll position to prevent jumping
-        const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
-
-        // Show all primes (infinite scrolling)
-        const primesToShow = this.allPrimes;
-
-        // Only append new primes instead of replacing all
-        this.appendNewPrimes(container, primesToShow);
-
-        console.log(`Displaying ${primesToShow.length} primes. First: ${this.allPrimes[0]}, Last: ${primesToShow[primesToShow.length - 1]}`);
-
-        // Restore scroll position to prevent jumping
-        window.scrollTo(0, currentScrollTop);
-    }
-
-    appendNewPrimes(container, primesToShow) {
-        // Track how many primes are already displayed
-        const currentPrimeElements = container.querySelectorAll('.prime-number');
-        const alreadyDisplayed = currentPrimeElements.length;
-        
-        // Only add new primes that aren't already displayed
-        const newPrimes = primesToShow.slice(alreadyDisplayed);
-        
-        if (newPrimes.length > 0) {
-            requestAnimationFrame(() => {
-                // Use efficient batch processing for new primes only
-                const batchSize = 50;
-                let currentIndex = 0;
-                
-                const processBatch = () => {
-                    const fragment = document.createDocumentFragment();
-                    const endIndex = Math.min(currentIndex + batchSize, newPrimes.length);
-                    
-                    for (let i = currentIndex; i < endIndex; i++) {
-                        const primeElement = document.createElement('button');
-                        primeElement.type = 'button';
-                        primeElement.className = 'prime-number';
-                        primeElement.textContent = newPrimes[i].toLocaleString();
-                        primeElement.dataset.prime = String(newPrimes[i]);
-                        primeElement.setAttribute('aria-label', `Open details for prime ${newPrimes[i].toLocaleString()}`);
-                        fragment.appendChild(primeElement);
-                    }
-                    
-                    container.appendChild(fragment);
-                    currentIndex = endIndex;
-                    
-                    // Continue processing if more batches remain
-                    if (currentIndex < newPrimes.length) {
-                        requestAnimationFrame(processBatch);
-                    }
-                };
-                
-                processBatch();
+            if (this.scrollFrame !== null) return;
+            this.scrollFrame = requestAnimationFrame(() => {
+                this.scrollFrame = null;
+                const y = window.scrollY;
+                const direction = y > this.lastScrollY ? 'later' : y < this.lastScrollY ? 'earlier' : null;
+                this.lastScrollY = y;
+                if (!direction || this.pending || this.errorDirection || this.ui['prime-modal'].open || document.hidden) return;
+                if (direction === 'later' && this.ui['stream-footer'].getBoundingClientRect().top < window.innerHeight + 300) this.load('later');
+                if (direction === 'earlier' && this.ui['prime-container'].getBoundingClientRect().top > -300) this.load('earlier');
             });
-        }
-    }
-
-    generateInitialBatch() {
-        console.log('Generating initial batch of primes');
-        this.generateNextBatch();
-    }
-
-    generateNextBatch() {
-        if (this.isGenerating) return;
-
-        this.isGenerating = true;
-
-        // Calculate range for next batch - generate smaller batches to match scroll speed
-        let start, end;
-
-        if (this.allPrimes.length === 0) {
-            // First batch - start from 2
-            start = 2;
-            end = 500; // Initial batch
-        } else {
-            // Subsequent batches - continue from where we left off
-            start = this.maxPrimeGenerated + 1;
-            end = start + 800; // Small batch to stay just ahead of scrolling
-        }
-
-        console.log(`Generating primes from ${start} to ${end}`);
-
-        // Use first available worker
-        const worker = this.workers[0];
-        worker.busy = true;
-        this.statistics.activeWorkers = 1;
-        this.ui.generationState.textContent = `Scanning ${start.toLocaleString()} to ${end.toLocaleString()}...`;
-
-        // Send work to worker
-        worker.worker.postMessage({
-            type: 'generate',
-            start: start,
-            end: end,
-            workerId: 0
+        }, { passive: true });
+        window.addEventListener('pagehide', () => {
+            this.worker?.terminate();
+            this.worker = null;
+            clearTimeout(this.timeout);
+            this.pending = null;
         });
-
-        this.ui.loadingIndicator.style.display = 'flex';
-        this.updateStatistics();
-    }
-
-    stopGeneration() {
-        this.isGenerating = false;
-        
-        this.workers.forEach(worker => {
-            worker.busy = false;
+        window.addEventListener('pageshow', event => {
+            if (event.persisted) {
+                this.setBusy(false);
+                this.status('Ready when you are. Scroll or select More primes.');
+            }
         });
-        this.statistics.activeWorkers = 0;
-        
-        this.ui.loadingIndicator.style.display = 'none';
-        this.ui.generationState.textContent = `Showing ${this.statistics.totalPrimes.toLocaleString()} primes. Scroll to generate more.`;
     }
 
-    updateStatistics() {
-        const averageDuration = this.statistics.completedBatches > 0
-            ? Math.round(this.statistics.totalCalculationTime / this.statistics.completedBatches)
-            : 0;
-
-        this.ui.statTotalPrimes.textContent = this.statistics.totalPrimes.toLocaleString();
-        this.ui.statLargestPrime.textContent = this.statistics.largestPrime.toLocaleString();
-        this.ui.statRangeEnd.textContent = this.maxPrimeGenerated.toLocaleString();
-        this.ui.statLastDuration.textContent = `${this.statistics.lastBatchDuration.toLocaleString()} ms`;
-        this.ui.statAverageDuration.textContent = `${averageDuration.toLocaleString()} ms`;
-        this.ui.statWorkerCount.textContent = `${this.workerCount} available`;
+    makeWorker() {
+        const worker = new Worker('js/prime-worker.js?v=2026100201');
+        worker.onmessage = event => { if (this.worker === worker) this.receive(event.data); };
+        worker.onerror = () => { if (this.worker === worker) this.fail('The background generator could not run. Try again.'); };
+        worker.onmessageerror = () => { if (this.worker === worker) this.fail('The next batch could not be read. Try again.'); };
+        this.worker = worker;
     }
 
-    // Performance monitoring methods
-    clearAllPrimes() {
-        // Clear displayed primes
-        const container = this.ui.container;
-        container.innerHTML = '';
-        
-        // Reset state
-        this.allPrimes = [];
-        this.maxPrimeGenerated = 1;
-        this.statistics.totalPrimes = 0;
-        this.statistics.largestPrime = 2;
-        this.statistics.totalCalculationTime = 0;
-        this.statistics.lastBatchDuration = 0;
-        this.statistics.completedBatches = 0;
-        
-        this.updateStatistics();
-        console.log('All primes cleared');
-    }
-
-    showPrimeModal(prime) {
-        const modal = this.ui.modal;
-        const modalInfo = this.ui.modalInfo;
-        
-        // Find the position of this prime in our list (1-indexed)
-        const primeIndex = this.allPrimes.indexOf(prime) + 1;
-        
-        // Run independent primality test
-        const isPrimeConfirmed = this.millerRabinTest(prime);
-        
-        // Generate prime properties
-        const properties = this.getPrimeProperties(prime);
-        
-        modalInfo.innerHTML = `
-            <div class="prime-detail">
-                <strong>Prime Number:</strong>
-                <span class="detail-content">${prime.toLocaleString()}</span>
-            </div>
-            <div class="prime-detail">
-                <strong>Position:</strong>
-                <span class="detail-content">${primeIndex === 0 ? 'Unknown' : `${primeIndex.toLocaleString()} (${this.getOrdinal(primeIndex)} prime)`}</span>
-            </div>
-            <div class="prime-detail verification">
-                <strong>Verification:</strong>
-                <span class="detail-content">${isPrimeConfirmed ? '✓ Confirmed Prime' : '✗ Not Prime'} (Miller-Rabin Test)</span>
-            </div>
-            <div class="prime-detail">
-                <strong>Binary:</strong>
-                <span class="detail-content">${prime.toString(2)}</span>
-            </div>
-            <div class="prime-detail">
-                <strong>Hexadecimal:</strong>
-                <span class="detail-content">0x${prime.toString(16).toUpperCase()}</span>
-            </div>
-            <div class="prime-detail">
-                <strong>Digit Sum:</strong>
-                <span class="detail-content">${properties.digitSum}</span>
-            </div>
-            <div class="prime-detail">
-                <strong>Type:</strong>
-                <span class="detail-content">${properties.type}</span>
-            </div>
-            ${properties.special ? `<div class="prime-detail"><strong>Special:</strong><span class="detail-content">${properties.special}</span></div>` : ''}
-        `;
-        
-        modal.style.display = 'block';
-    }
-
-    startGeneration() {
-        if (!this.isGenerating) {
-            this.generateNextBatch();
+    load(direction, manual = false) {
+        if (this.pending || this.ui['prime-modal'].open) return;
+        const range = this.stream.nextRange(direction);
+        if (!range) {
+            if (direction === 'later') this.status('This session reached 1 trillion. Primes keep going; this browser’s calculation limit stops here.');
+            return;
+        }
+        this.errorDirection = null;
+        this.pending = { ...range, id: ++this.requestId, direction, manual, focus: document.activeElement };
+        this.setBusy(true);
+        this.status(this.stream.segments.length ? 'Making more primes on your device…' : 'Making the first primes on your device…');
+        try {
+            if (!this.worker) this.makeWorker();
+            this.worker.postMessage({ id: this.pending.id, start: range.start, end: range.end });
+            this.timeout = setTimeout(() => this.fail('That batch took too long. Try again when your device is ready.'), 15000);
+        } catch (error) {
+            this.fail('Your browser could not start the background generator. Try again, or use a browser with Web Worker support.');
         }
     }
 
-    millerRabinTest(n, k = 5) {
-        if (n < 2) return false;
-        if (n === 2 || n === 3) return true;
-        if (n % 2 === 0) return false;
-
-        // Write n-1 as d * 2^r
-        let d = n - 1;
-        let r = 0;
-        while (d % 2 === 0) {
-            d /= 2;
-            r++;
-        }
-
-        // Witness loop
-        for (let i = 0; i < k; i++) {
-            const a = 2 + Math.floor(Math.random() * (n - 4));
-            let x = this.modPow(a, d, n);
-
-            if (x === 1 || x === n - 1) continue;
-
-            let composite = true;
-            for (let j = 0; j < r - 1; j++) {
-                x = (x * x) % n;
-                if (x === n - 1) {
-                    composite = false;
-                    break;
-                }
+    receive(message) {
+        if (!this.pending || message.id !== this.pending.id) return;
+        if (message.type === 'error') { this.fail('The next batch could not be generated. Try again.'); return; }
+        if (message.type !== 'result') return;
+        const request = this.pending;
+        clearTimeout(this.timeout);
+        // A user may reverse direction while the worker is busy. Never evict a
+        // visible or focused block just because it was offscreen at request time.
+        const candidate = this.stream.segments.length === this.stream.maxSegments ? (request.direction === 'later' ? this.stream.segments[0] : this.stream.segments.at(-1)) : null;
+        const candidateNode = candidate ? document.getElementById(`range-${candidate.start}`) : null;
+        if (candidateNode) {
+            const rect = candidateNode.getBoundingClientRect();
+            if ((rect.bottom > 0 && rect.top < window.innerHeight) || candidateNode.contains(document.activeElement)) {
+                this.pending = null;
+                this.setBusy(false);
+                const focused = candidateNode.contains(document.activeElement);
+                this.status(focused
+                    ? (request.direction === 'later' ? 'Select More primes to continue beyond the focused number.' : 'Select Load earlier primes to continue beyond the focused number.')
+                    : (request.direction === 'later' ? 'Scroll farther down to continue.' : 'Scroll farther up to see earlier primes.'));
+                return;
             }
-
-            if (composite) return false;
         }
-        return true;
-    }
-
-    modPow(base, exp, mod) {
-        let result = 1;
-        base = base % mod;
-        while (exp > 0) {
-            if (exp % 2 === 1) {
-                result = (result * base) % mod;
+        const anchor = Array.from(this.ui['prime-container'].querySelectorAll('.prime-number')).find(node => node.getBoundingClientRect().bottom > 0 && node.getBoundingClientRect().top < window.innerHeight);
+        const anchorTop = anchor?.getBoundingClientRect().top;
+        let result;
+        try {
+            if (message.start !== request.start || message.end !== request.end) throw new Error('Range mismatch');
+            result = this.stream.accept(request, message.primes, request.direction);
+        } catch (error) { this.fail('The next batch was incomplete. Try again.'); return; }
+        const list = this.renderSegment(result.segment);
+        if (request.direction === 'earlier') this.ui['prime-container'].prepend(list);
+        else this.ui['prime-container'].append(list);
+        if (result.removed) {
+            const removed = document.getElementById(`range-${result.removed.start}`);
+            for (const button of removed.querySelectorAll('.prime-number')) this.revealObserver?.unobserve(button);
+            removed.remove();
+        }
+        this.pending = null;
+        this.updateStats(message.duration);
+        this.setBusy(false);
+        if (anchor?.isConnected) window.scrollTo(window.scrollX, window.scrollY + anchor.getBoundingClientRect().top - anchorTop);
+        if (request.manual && document.activeElement === request.focus && !this.ui['prime-modal'].open) {
+            const firstNewPrime = list.querySelector('.prime-number');
+            if (firstNewPrime) {
+                firstNewPrime.focus({ preventScroll: true });
+                firstNewPrime.scrollIntoView({ block: 'nearest', behavior: 'instant' });
             }
-            exp = Math.floor(exp / 2);
-            base = (base * base) % mod;
         }
-        return result;
-    }
-
-    getPrimeProperties(prime) {
-        const digitSum = prime.toString().split('').reduce((sum, digit) => sum + parseInt(digit), 0);
-        let type = 'Standard Prime';
-        let special = null;
-
-        // Check for special prime types
-        if (prime < 10) type = 'Single-digit Prime';
-        else if (this.isPalindrome(prime)) {
-            type = 'Palindromic Prime';
-            special = 'Reads the same forwards and backwards';
-        } else if (this.isTwinPrime(prime)) {
-            type = 'Twin Prime';
-            special = 'Part of a twin prime pair (differ by 2)';
-        } else if (this.isSophieGermain(prime)) {
-            type = 'Sophie Germain Prime';  
-            special = '2p + 1 is also prime';
-        } else if (this.isSafe(prime)) {
-            type = 'Safe Prime';
-            special = '(p - 1) / 2 is also prime';
+        this.lastScrollY = window.scrollY;
+        this.status(`${message.primes.length.toLocaleString()} ${request.direction === 'earlier' ? 'earlier primes restored' : 'more primes ready'}. ${this.stream.nextRange('later') ? 'Keep scrolling to explore.' : 'This session reached its calculation limit.'}`);
+        // At most one extra initial batch for a very tall viewport. There is no
+        // observer/resize/completion loop; later work requires scrolling or a click.
+        if (!this.initialFillUsed && this.stream.segments.length === 1) {
+            this.initialFillUsed = true;
+            if (this.ui['stream-footer'].getBoundingClientRect().top < window.innerHeight) this.load('later');
         }
-
-        return { digitSum, type, special };
     }
 
-    isPalindrome(n) {
-        const str = n.toString();
-        return str === str.split('').reverse().join('');
+    renderSegment(segment) {
+        const list = document.createElement('ol');
+        list.className = 'prime-batch';
+        list.setAttribute('role', 'list');
+        list.id = `range-${segment.start}`;
+        list.start = segment.startIndex;
+        list.setAttribute('aria-label', `Prime numbers from position ${segment.startIndex.toLocaleString()}`);
+        const fragment = document.createDocumentFragment();
+        segment.primes.forEach((prime, offset) => {
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'prime-number';
+            button.textContent = prime.toLocaleString();
+            button.dataset.prime = String(prime);
+            button.dataset.index = String(segment.startIndex + offset);
+            button.setAttribute('aria-label', `${prime.toLocaleString()}, prime number ${(segment.startIndex + offset).toLocaleString()}. Show details`);
+            item.append(button);
+            fragment.append(item);
+            this.revealObserver?.observe(button);
+        });
+        list.append(fragment);
+        return list;
     }
 
-    isTwinPrime(p) {
-        return this.millerRabinTest(p - 2) || this.millerRabinTest(p + 2);
+    fail(message) {
+        this.errorDirection = this.pending?.direction || this.errorDirection || 'later';
+        clearTimeout(this.timeout);
+        this.worker?.terminate();
+        this.worker = null;
+        this.pending = null;
+        this.setBusy(false);
+        this.status(message);
     }
 
-    isSophieGermain(p) {
-        return this.millerRabinTest(2 * p + 1);
+    setBusy(busy) {
+        this.ui['prime-container'].setAttribute('aria-busy', String(busy));
+        this.ui['load-more'].setAttribute('aria-disabled', String(busy || (!this.errorDirection && !this.stream.nextRange('later'))));
+        this.ui['load-earlier'].setAttribute('aria-disabled', String(busy));
+        this.ui['load-more'].textContent = busy ? 'Making primes…' : this.errorDirection ? 'Try again' : this.stream.nextRange('later') ? 'More primes ↓' : 'Calculation limit reached';
     }
 
-    isSafe(p) {
-        return (p - 1) % 2 === 0 && this.millerRabinTest((p - 1) / 2);
+    status(message) { this.ui['generation-state'].textContent = message; }
+
+    updateStats(duration) {
+        this.ui['stat-total-primes'].textContent = this.stream.explored.toLocaleString();
+        this.ui['stat-largest-prime'].textContent = this.stream.largest.toLocaleString();
+        this.ui['stat-last-duration'].textContent = `${Math.max(0, Math.round(duration || 0))} ms`;
+        const first = this.stream.segments[0];
+        this.ui['earlier-controls'].hidden = !first || first.start === 2;
+        this.ui['window-range'].textContent = first ? `From prime #${first.startIndex.toLocaleString()}` : '';
     }
 
-    getOrdinal(n) {
-        const j = n % 10;
-        const k = n % 100;
-        if (j === 1 && k !== 11) return n + 'st';
-        if (j === 2 && k !== 12) return n + 'nd';
-        if (j === 3 && k !== 13) return n + 'rd';
-        return n + 'th';
-    }
-
-    getMemoryUsage() {
-        if (performance.memory) {
-            return {
-                used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
-                total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
-                limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)
-            };
+    showPrime(button) {
+        const prime = Number(button.dataset.prime);
+        const position = Number(button.dataset.index);
+        this.returnFocus = button;
+        this.ui['prime-modal-title'].textContent = prime.toLocaleString();
+        this.ui['modal-position'].textContent = `Prime #${position.toLocaleString()}`;
+        const properties = [
+            ['Binary', prime.toString(2)],
+            ['Hexadecimal', `0x${prime.toString(16).toUpperCase()}`],
+            ['Digit sum', String([...String(prime)].reduce((sum, digit) => sum + Number(digit), 0))]
+        ];
+        const traits = [];
+        if (String(prime) === [...String(prime)].reverse().join('')) traits.push('Palindromic: reads the same both ways');
+        if (PrimeMath.isPrime(prime - 2) || PrimeMath.isPrime(prime + 2)) traits.push('Twin prime: another prime is two away');
+        if (PrimeMath.isPrime(2 * prime + 1)) traits.push('Sophie Germain prime: 2p + 1 is prime');
+        if (PrimeMath.isPrime((prime - 1) / 2)) traits.push('Safe prime: (p − 1) / 2 is prime');
+        if (traits.length) properties.push(['Worth a look', traits.join(' · ')]);
+        this.ui['modal-prime-info'].replaceChildren();
+        for (const [label, value] of properties) {
+            const row = document.createElement('div');
+            const term = document.createElement('dt');
+            const description = document.createElement('dd');
+            term.textContent = label;
+            description.textContent = value;
+            row.append(term, description);
+            this.ui['modal-prime-info'].append(row);
         }
-        return null;
+        // Native modal dialogs provide inert background, Escape dismissal,
+        // and focus containment without hijacking browser keyboard shortcuts.
+        this.ui['prime-modal'].showModal();
+        this.ui['close-modal'].focus({ preventScroll: true });
     }
 }
-
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.primeApp = new PrimeGeneratorApp();
-    
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 's') {
-            e.preventDefault();
-            window.primeApp.stopGeneration();
-        }
-        if (e.ctrlKey && e.key === 'r') {
-            e.preventDefault();
-            window.primeApp.startGeneration();
-        }
-    });
-    
-    console.log('Prime Generator App initialized!');
-    console.log(`Using ${navigator.hardwareConcurrency || 4} CPU cores`);
-});
+document.addEventListener('DOMContentLoaded', () => { window.primeApp = new PrimeGeneratorApp(); });
