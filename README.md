@@ -14,10 +14,13 @@ This later repository carries forward the original C sources and adds the browse
 
 ## What the web app does
 
-- Generates an initial batch of primes when the page loads
-- Adds more primes as you scroll
-- Runs prime generation in a Web Worker
-- Shows a details modal with a prime's position, binary and hexadecimal representations, digit sum, and prime-type labels
+- Puts the prime sequence first, with a short explanation and optional session statistics
+- Generates more primes on your device as you scroll, with manual More / Retry controls
+- Uses a single background Web Worker and bounded segmented sieving
+- Keeps a reversible window of at most 12 segments; earlier rows regenerate as you scroll back
+- Offers keyboard-accessible prime details, reduced-motion support, and a no-JavaScript explanation
+- Includes a collapsed museum section: a high-school experiment (c. 2012–2013, Vincent’s recollection), college-era source updated November 5, 2016, and this 2026 browser showcase
+- Preserves the original `threadPartialSieve` exhibit separately from the current JavaScript generator
 
 ## Run locally
 
@@ -47,9 +50,14 @@ curl http://localhost:3007/test
 - [`public/js/app.js`](public/js/app.js) handles scrolling, appends generated primes, and displays the details modal.
 - [`public/js/prime-worker.js`](public/js/prime-worker.js) generates primes with a sieve in a browser worker.
 
-The app creates a pool of workers, but the current batch-generation path sends work to the first worker. The active generator uses the simple sieve; a segmented-sieve implementation also remains in the worker source.
+- [`public/js/prime-math.js`](public/js/prime-math.js) holds the shared segmented sieve and deterministic BigInt primality checks for the detail labels.
+- [`public/js/prime-stream.js`](public/js/prime-stream.js) tracks contiguous ranges and absolute prime positions in a reversible, bounded window.
 
-The details modal uses a randomized Miller–Rabin check and JavaScript number arithmetic. Treat it as an educational demonstration rather than a tool for cryptography or arbitrary-precision calculations. Long scrolling sessions keep the generated primes in memory, so performance depends on the device and the size of the list.
+One request scans at most 1,000 integers. The worker retains only base primes up to the square root of the scanned range, and the page retains at most 12 segments. Evicted ranges are regenerated exactly when scrolling backward. The visible row is used as an anchor when older rows are removed or prepended; a visible or focused segment is never evicted. Explicit earlier / more controls support keyboard navigation and browsers without an intersection observer.
+
+Automatic loading is driven by scroll direction. Completion and resize do not recursively request work; at startup only one additional batch may fill a tall viewport. Errors stop automatic loading and offer retry. The app never creates a database, calls a prime API, or starts the historical database builder.
+
+Prime numbers do not end, but this browser session intentionally pauses at **1 trillion** to bound sieve memory and work. Details use exact BigInt arithmetic for their deterministic Miller–Rabin classifications; this remains an educational demonstration, not a cryptographic tool.
 
 ## Project layout
 
@@ -102,15 +110,18 @@ The `javascript/` directory contains earlier browser-based prime and factorizati
 
 ## Development checks
 
-`npm run dev` runs the same `node server.js` command as `npm start`. There are currently no test, lint, or build scripts in `package.json`.
+`npm run dev` runs the same `node server.js` command as `npm start`. There is no build step or framework dependency.
 
-For a basic manual check after changing the web app:
+```bash
+npm test       # Dependency-free mathematics, worker/app state, historical source checks
+npm run check  # Syntax-check current and retained JavaScript
+```
 
-1. Start the server and open `http://localhost:3007`.
-2. Confirm that the initial prime list appears.
-3. Scroll toward the bottom and check that more primes are added.
-4. Click a prime and check the details modal, then close it.
-5. Request `/test` and check the JSON response.
+The tests compare prime batches with independent trial division, verify forward/reverse range joins and ordinals, enforce the retention and numeric bounds, and exercise the actual app/worker scripts in a lightweight DOM/worker test double. These state tests do not replace rendered browser testing.
+
+For rendered checks, use an environment with Playwright and its Chromium browser already available, start the app, then run `npm run test:browser`. `PRIME_TEST_URL` can point to a test instance. Playwright is an optional testing tool, not an app dependency. The suite covers 320px/375px mobile, tablet, desktop and short landscape viewports; numbers above the fold; museum/stats disclosures; modal keyboard focus; long/reverse scrolling; reduced motion; and no-JavaScript fallback. See [the review checklist](docs/ux-review.md) for remaining visual acceptance checks.
+
+Do not run `npm run build-db` as a web-app test. It targets a very large historical dataset.
 
 ## Contributing
 

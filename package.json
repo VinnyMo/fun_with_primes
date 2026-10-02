@@ -8,7 +8,10 @@
     "dev": "node server.js",
     "build-db": "node scripts/build-prime-database.js",
     "db-stats": "node scripts/database-stats.js",
-    "fix-status": "node scripts/fix-status.js"
+    "fix-status": "node scripts/fix-status.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check-syntax.js",
+    "test:browser": "node tests/browser-check.cjs"
   },
   "keywords": [
     "primes",
