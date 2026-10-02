@@ -8,15 +8,36 @@ class PrimeGeneratorApp {
         this.statistics = {
             totalPrimes: 0,
             largestPrime: 2,
-            totalCalculationTime: 0 // Track cumulative calculation time
+            totalCalculationTime: 0,
+            lastBatchDuration: 0,
+            completedBatches: 0,
+            activeWorkers: 0
         };
         this.isGenerating = false;
         this.primesPerPage = 200; // Only generate this many at a time
+        this.ui = {};
         
+        this.cacheElements();
         this.initializeWorkers();
         this.bindEvents();
         this.updateStatistics();
         this.generateInitialBatch();
+    }
+
+    cacheElements() {
+        this.ui = {
+            container: document.getElementById('prime-container'),
+            loadingIndicator: document.getElementById('loading-indicator'),
+            generationState: document.getElementById('generation-state'),
+            statTotalPrimes: document.getElementById('stat-total-primes'),
+            statLargestPrime: document.getElementById('stat-largest-prime'),
+            statRangeEnd: document.getElementById('stat-range-end'),
+            statLastDuration: document.getElementById('stat-last-duration'),
+            statAverageDuration: document.getElementById('stat-average-duration'),
+            statWorkerCount: document.getElementById('stat-worker-count'),
+            modal: document.getElementById('prime-modal'),
+            modalInfo: document.getElementById('modal-prime-info')
+        };
     }
 
     initializeWorkers() {
@@ -50,16 +71,25 @@ class PrimeGeneratorApp {
         // Prime click handling
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('prime-number')) {
-                const primeValue = parseInt(e.target.textContent.replace(/,/g, ''));
+                const primeValue = parseInt(e.target.dataset.prime || e.target.textContent.replace(/,/g, ''), 10);
                 this.showPrimeModal(primeValue);
             }
         });
 
         // Modal close handling
         document.addEventListener('click', (e) => {
-            const modal = document.getElementById('prime-modal');
-            if (e.target === modal || e.target.classList.contains('close')) {
-                modal.style.display = 'none';
+            if (
+                e.target === this.ui.modal ||
+                e.target.classList.contains('close') ||
+                e.target.classList.contains('modal-backdrop')
+            ) {
+                this.ui.modal.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.ui.modal.style.display = 'none';
             }
         });
 
@@ -90,24 +120,29 @@ class PrimeGeneratorApp {
                     
                     this.statistics.totalPrimes = this.allPrimes.length;
                     this.statistics.largestPrime = Math.max(this.statistics.largestPrime, ...primes);
-                    this.statistics.totalCalculationTime += duration || 0; // Add to cumulative time
+                    this.statistics.totalCalculationTime += duration || 0;
+                    this.statistics.lastBatchDuration = duration || 0;
+                    this.statistics.completedBatches += 1;
                     this.maxPrimeGenerated = end;
                 }
                 
                 // This batch is complete, stop generating
+                this.updateStatistics();
                 this.stopGeneration();
                 break;
 
             case 'error':
                 console.error(`Worker ${workerId} error:`, error);
                 this.workers[workerId].busy = false;
+                this.statistics.activeWorkers = Math.max(0, this.statistics.activeWorkers - 1);
+                this.ui.generationState.textContent = 'A worker failed while generating primes.';
                 this.stopGeneration();
                 break;
         }
     }
 
     displayPrimes() {
-        const container = document.getElementById('prime-container');
+        const container = this.ui.container;
 
         // Store current scroll position to prevent jumping
         const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
@@ -143,9 +178,12 @@ class PrimeGeneratorApp {
                     const endIndex = Math.min(currentIndex + batchSize, newPrimes.length);
                     
                     for (let i = currentIndex; i < endIndex; i++) {
-                        const primeElement = document.createElement('div');
+                        const primeElement = document.createElement('button');
+                        primeElement.type = 'button';
                         primeElement.className = 'prime-number';
                         primeElement.textContent = newPrimes[i].toLocaleString();
+                        primeElement.dataset.prime = String(newPrimes[i]);
+                        primeElement.setAttribute('aria-label', `Open details for prime ${newPrimes[i].toLocaleString()}`);
                         fragment.appendChild(primeElement);
                     }
                     
@@ -191,6 +229,8 @@ class PrimeGeneratorApp {
         // Use first available worker
         const worker = this.workers[0];
         worker.busy = true;
+        this.statistics.activeWorkers = 1;
+        this.ui.generationState.textContent = `Scanning ${start.toLocaleString()} to ${end.toLocaleString()}...`;
 
         // Send work to worker
         worker.worker.postMessage({
@@ -200,7 +240,8 @@ class PrimeGeneratorApp {
             workerId: 0
         });
 
-        document.getElementById('loading-indicator').style.display = 'block';
+        this.ui.loadingIndicator.style.display = 'flex';
+        this.updateStatistics();
     }
 
     stopGeneration() {
@@ -209,21 +250,29 @@ class PrimeGeneratorApp {
         this.workers.forEach(worker => {
             worker.busy = false;
         });
+        this.statistics.activeWorkers = 0;
         
-        document.getElementById('loading-indicator').style.display = 'none';
+        this.ui.loadingIndicator.style.display = 'none';
+        this.ui.generationState.textContent = `Showing ${this.statistics.totalPrimes.toLocaleString()} primes. Scroll to generate more.`;
     }
 
-    // Remove the old complex methods and keep it simple
-
     updateStatistics() {
-        // Update statistics (no UI elements to update anymore)
-        // Keep the method for compatibility but do nothing
+        const averageDuration = this.statistics.completedBatches > 0
+            ? Math.round(this.statistics.totalCalculationTime / this.statistics.completedBatches)
+            : 0;
+
+        this.ui.statTotalPrimes.textContent = this.statistics.totalPrimes.toLocaleString();
+        this.ui.statLargestPrime.textContent = this.statistics.largestPrime.toLocaleString();
+        this.ui.statRangeEnd.textContent = this.maxPrimeGenerated.toLocaleString();
+        this.ui.statLastDuration.textContent = `${this.statistics.lastBatchDuration.toLocaleString()} ms`;
+        this.ui.statAverageDuration.textContent = `${averageDuration.toLocaleString()} ms`;
+        this.ui.statWorkerCount.textContent = `${this.workerCount} available`;
     }
 
     // Performance monitoring methods
     clearAllPrimes() {
         // Clear displayed primes
-        const container = document.getElementById('prime-container');
+        const container = this.ui.container;
         container.innerHTML = '';
         
         // Reset state
@@ -232,14 +281,16 @@ class PrimeGeneratorApp {
         this.statistics.totalPrimes = 0;
         this.statistics.largestPrime = 2;
         this.statistics.totalCalculationTime = 0;
+        this.statistics.lastBatchDuration = 0;
+        this.statistics.completedBatches = 0;
         
         this.updateStatistics();
         console.log('All primes cleared');
     }
 
     showPrimeModal(prime) {
-        const modal = document.getElementById('prime-modal');
-        const modalInfo = document.getElementById('modal-prime-info');
+        const modal = this.ui.modal;
+        const modalInfo = this.ui.modalInfo;
         
         // Find the position of this prime in our list (1-indexed)
         const primeIndex = this.allPrimes.indexOf(prime) + 1;
@@ -283,6 +334,12 @@ class PrimeGeneratorApp {
         `;
         
         modal.style.display = 'block';
+    }
+
+    startGeneration() {
+        if (!this.isGenerating) {
+            this.generateNextBatch();
+        }
     }
 
     millerRabinTest(n, k = 5) {

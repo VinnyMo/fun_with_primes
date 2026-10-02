@@ -20,7 +20,6 @@ Environment=PORT=3007
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/home/maestro/fun_with_primes/database
 
 # Logging
 StandardOutput=journal

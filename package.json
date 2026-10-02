@@ -1,7 +1,7 @@
 {
   "name": "prime-generator-web",
-  "version": "1.0.0",
-  "description": "Multi-core prime number generator with progressive loading and real-time statistics",
+  "version": "2.0.0",
+  "description": "Client-side multi-core prime number generator with infinite scrolling",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -21,7 +21,9 @@
   "dependencies": {
     "express": "^4.18.2",
     "express-rate-limit": "^7.5.1",
-    "helmet": "^7.0.0",
+    "helmet": "^7.0.0"
+  },
+  "optionalDependencies": {
     "sqlite3": "^5.1.6"
   }
 }
