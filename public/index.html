@@ -4,46 +4,116 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fun With Primes</title>
-    <link rel="stylesheet" href="css/styles.css?v=20251112002">
-    <meta name="description" content="Infinite scrolling prime number generator">
-    <meta name="keywords" content="prime numbers, mathematics">
-    <meta name="theme-color" content="#6366f1">
+    <link rel="stylesheet" href="css/styles.css?v=20260403001">
+    <meta name="description" content="An infinite, browser-powered prime number generator with live details and smooth scrolling.">
+    <meta name="keywords" content="prime numbers, mathematics, web workers, number theory">
+    <meta name="theme-color" content="#132238">
 </head>
 <body>
-    <!-- Gradient Background Overlay -->
-    <div class="gradient-overlay"></div>
+    <div class="page-shell">
+        <div class="page-aura page-aura-left"></div>
+        <div class="page-aura page-aura-right"></div>
 
-    <!-- Main Content -->
-    <main id="main-content">
-        <header class="hero-section">
-            <h1 class="hero-title">Fun With Primes</h1>
-        </header>
+        <main id="main-content">
+            <header class="hero-section">
+                <p class="eyebrow">vincentmossman.com/prime-generator</p>
+                <div class="hero-copy">
+                    <h1 class="hero-title">Prime numbers, rendered as an endless field.</h1>
+                    <p class="hero-description">
+                        This page generates primes directly in your browser and keeps extending the sequence as you move down the page.
+                        Select any value for position, representation, and quick number-theory context.
+                    </p>
+                </div>
 
-        <section class="prime-section">
-            <div id="prime-container"></div>
-            <div id="loading-indicator" class="loading-indicator" style="display: none;">
-                <div class="loading-spinner"></div>
-                <span>Generating primes...</span>
-            </div>
-            <div id="scroll-hint" class="scroll-hint">
-                <svg class="scroll-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-                Scroll to generate more primes
-            </div>
-        </section>
-    </main>
+                <div class="hero-meta">
+                    <div class="meta-card">
+                        <span class="meta-label">Engine</span>
+                        <strong class="meta-value">Client-side generator</strong>
+                    </div>
+                    <div class="meta-card">
+                        <span class="meta-label">Throughput</span>
+                        <strong class="meta-value">Scroll to expand</strong>
+                    </div>
+                    <div class="meta-card">
+                        <span class="meta-label">Detail view</span>
+                        <strong class="meta-value">Tap any prime</strong>
+                    </div>
+                </div>
+            </header>
 
-    <!-- Prime Details Modal -->
+            <section class="dashboard-panel" aria-label="Prime generation statistics">
+                <div class="panel-heading">
+                    <div>
+                        <p class="panel-kicker">Live snapshot</p>
+                        <h2 class="panel-title">Prime stream status</h2>
+                    </div>
+                    <p class="panel-note" id="generation-state">Preparing first batch...</p>
+                </div>
+
+                <div class="stats-grid">
+                    <article class="stat-card">
+                        <span class="stat-label">Primes shown</span>
+                        <strong class="stat-value" id="stat-total-primes">0</strong>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Largest prime</span>
+                        <strong class="stat-value" id="stat-largest-prime">2</strong>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Range scanned</span>
+                        <strong class="stat-value" id="stat-range-end">0</strong>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Last batch time</span>
+                        <strong class="stat-value" id="stat-last-duration">0 ms</strong>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Average batch time</span>
+                        <strong class="stat-value" id="stat-average-duration">0 ms</strong>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Worker capacity</span>
+                        <strong class="stat-value" id="stat-worker-count">0</strong>
+                    </article>
+                </div>
+            </section>
+
+            <section class="prime-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="panel-kicker">Infinite canvas</p>
+                        <h2 class="panel-title">Generated primes</h2>
+                    </div>
+                    <p class="section-note">The list extends automatically when you get near the end.</p>
+                </div>
+
+                <div id="prime-container" aria-live="polite"></div>
+
+                <div id="loading-indicator" class="loading-indicator" style="display: none;">
+                    <div class="loading-spinner" aria-hidden="true"></div>
+                    <span>Generating the next block of primes...</span>
+                </div>
+
+                <div id="scroll-hint" class="scroll-hint">
+                    <svg class="scroll-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                    Keep scrolling to push the sequence forward.
+                </div>
+            </section>
+        </main>
+    </div>
+
     <div id="prime-modal" class="modal" style="display: none;">
         <div class="modal-backdrop"></div>
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="prime-modal-title">
             <button class="close" aria-label="Close modal">&times;</button>
-            <h2 class="modal-title">Prime Number Details</h2>
+            <p class="panel-kicker">Selected value</p>
+            <h2 class="modal-title" id="prime-modal-title">Prime number details</h2>
             <div id="modal-prime-info"></div>
         </div>
     </div>
 
-    <script src="js/app.js?v=20251112001"></script>
+    <script src="js/app.js?v=20260403001"></script>
 </body>
 </html>

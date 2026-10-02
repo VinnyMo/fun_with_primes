@@ -55,7 +55,7 @@ app.get('/test', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
     console.log(`Fun With Primes server running on port ${PORT}`);
     console.log(`Access at: http://localhost:${PORT}`);
     console.log('Client-side prime generation only - no database API');
