@@ -26,13 +26,13 @@ You need Git, Node.js, npm, and a browser with Web Worker support.
 ```bash
 git clone https://github.com/VinnyMo/fun_with_primes.git
 cd fun_with_primes
-npm install
+npm ci --omit=optional
 npm start
 ```
 
 Open [http://localhost:3007](http://localhost:3007).
 
-There is no frontend build step, and you do not need to build a prime database to use the web app. The `sqlite3` dependency remains in `package.json` for the older database tools.
+There is no frontend build step, and you do not need to build a prime database to use the web app. The `sqlite3` driver is an optional dependency for the older database tools and is omitted by this quick-start command.
 
 To check that the server is responding:
 
@@ -72,6 +72,17 @@ prime-generator.service      Existing deployment-specific service file
 An earlier version served prime lookups from SQLite. The database API routes and statistics panel were removed in [the November 2025 simplification](https://github.com/VinnyMo/fun_with_primes/commit/91ef3334c68656d319d07e64299176eacd5fcf7a).
 
 The database code, schema, utilities, and `public/api.html` assets remain in the repository. They are optional historical material, not part of the current web app's startup path. The current server does not implement the old `/api` and `/stats` routes; the retained API page describes that earlier version.
+
+The eight historical files (`database/schema.sql`, `lib/prime-database.js`, the three database scripts, and the three API-page assets) are preserved byte-for-byte from [commit `847e0b5`](https://github.com/VinnyMo/fun_with_primes/commit/847e0b5b56af29aa5b4b2964623c88e544389d67). Generated databases, installed dependencies, and compiled executables are not included.
+
+To explore the database tools, install their optional native driver first:
+
+```bash
+npm ci --include=optional
+node -e "require('sqlite3'); console.log('SQLite driver ready')"
+```
+
+The driver may need a supported native build toolchain if a prebuilt binary is unavailable. npm can skip an optional dependency when its installation fails, so check that the driver loads before running the database commands. The browser app does not require it.
 
 These scripts are still defined for exploring the database tooling:
 
