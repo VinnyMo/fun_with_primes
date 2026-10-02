@@ -42,6 +42,10 @@ class PrimeGeneratorApp {
             if (button) this.showPrime(button);
         });
         this.ui['close-modal'].addEventListener('click', () => this.ui['prime-modal'].close());
+        // Native dialog makes the page inert, but a browser may let Tab leave
+        // its last control for browser chrome. Keep ordinary Tab traversal in
+        // this dialog explicitly; do not intercept browser shortcuts or Escape.
+        this.ui['prime-modal'].addEventListener('keydown', event => this.containModalTab(event));
         this.ui['prime-modal'].addEventListener('click', event => {
             if (event.target !== this.ui['prime-modal']) return;
             const rect = this.ui['prime-modal'].getBoundingClientRect();
@@ -231,6 +235,27 @@ class PrimeGeneratorApp {
         this.ui['window-range'].textContent = first ? `From prime #${first.startIndex.toLocaleString()}` : '';
     }
 
+    modalFocusTargets() {
+        // The details dialog currently has only buttons, but include the usual
+        // controls so future links or fields preserve the same keyboard order.
+        return Array.from(this.ui['prime-modal'].querySelectorAll('button, a[href], input, select, textarea, [tabindex]')).filter(node =>
+            !node.disabled && !node.hidden && node.tabIndex >= 0 && node.getClientRects().length > 0
+            && window.getComputedStyle(node).visibility === 'visible'
+        );
+    }
+
+    containModalTab(event) {
+        const modal = this.ui['prime-modal'];
+        if (!modal.open || event.defaultPrevented || event.key !== 'Tab' || event.ctrlKey || event.metaKey || event.altKey) return;
+        const targets = this.modalFocusTargets();
+        event.preventDefault();
+        if (!targets.length) { this.ui['prime-modal-title'].focus(); return; }
+        const index = targets.indexOf(document.activeElement);
+        const next = index < 0 ? (event.shiftKey ? targets.length - 1 : 0)
+            : (index + (event.shiftKey ? -1 : 1) + targets.length) % targets.length;
+        targets[next].focus();
+    }
+
     showPrime(button) {
         const prime = Number(button.dataset.prime);
         const position = Number(button.dataset.index);
@@ -258,9 +283,10 @@ class PrimeGeneratorApp {
             row.append(term, description);
             this.ui['modal-prime-info'].append(row);
         }
-        // Native modal dialogs provide inert background, Escape dismissal,
-        // and focus containment without hijacking browser keyboard shortcuts.
+        // Native dialog supplies inert background and Escape dismissal. Tab
+        // containment above is explicit, and never active after it closes.
         this.ui['prime-modal'].showModal();
+        this.ui['prime-modal'].scrollTop = 0;
         this.ui['close-modal'].focus({ preventScroll: true });
     }
 }

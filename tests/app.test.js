@@ -22,6 +22,7 @@ function harness({ height = 768, workerFailures = 0 } = {}) {
     const window = {
         innerHeight: height, scrollX: 0, scrollY: 0,
         matchMedia: () => ({ matches: false }),
+        getComputedStyle: node => ({ visibility: node.visibility || 'visible' }),
         addEventListener(name, fn) { listeners.set(name, fn); },
         scrollTo(x, y) { this.scrollX = x; this.scrollY = Math.max(0, y); }
     };
@@ -37,6 +38,8 @@ function harness({ height = 768, workerFailures = 0 } = {}) {
             this.textContent = '';
             this.open = false;
             this.hidden = false;
+            this.disabled = false;
+            this.tabIndex = tagName === 'button' ? 0 : -1;
             this.classList = { add: name => { this.className += ` ${name}`; } };
         }
         addEventListener(name, fn) { this.events.set(name, fn); }
@@ -56,13 +59,21 @@ function harness({ height = 768, workerFailures = 0 } = {}) {
             this.parent = null;
         }
         replaceChildren(...nodes) { for (const child of this.children.slice()) child.remove(); this.append(...nodes); }
-        matches(selector) { return selector.startsWith('.') ? this.className.split(' ').includes(selector.slice(1)) : this.tagName === selector; }
+        matches(selector) {
+            if (selector.includes(',')) return selector.split(',').some(part => this.matches(part.trim()));
+            if (selector === '[tabindex]') return this.attributes.has('tabindex');
+            return selector.startsWith('.') ? this.className.split(' ').includes(selector.slice(1)) : this.tagName === selector;
+        }
         querySelectorAll(selector) {
             return this.children.flatMap(child => [...(child.matches(selector) ? [child] : []), ...child.querySelectorAll(selector)]);
         }
         querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
         closest(selector) { return this.matches(selector) ? this : this.parent?.closest(selector); }
-        focus() { document.activeElement = this; }
+        focus() {
+            document.activeElement = this;
+            listeners.get('document:focusin')?.({ target: this });
+        }
+        getClientRects() { return this.hidden ? [] : [this.getBoundingClientRect()]; }
         showModal() { this.open = true; }
         close() { this.open = false; this.emit('close'); }
         scrollIntoView() { window.scrollY += this.getBoundingClientRect().top; }
@@ -98,6 +109,10 @@ function harness({ height = 768, workerFailures = 0 } = {}) {
         const node = new Element(match[1]); node.id = match[2]; roots.push(node);
     }
     for (const root of roots.filter(node => node.tagName === 'details')) root.append(new Element('summary'));
+    // Model dialog descendants rather than treating its controls as unrelated
+    // roots, so application containment guards execute on a real hierarchy.
+    const modal = document.getElementById('prime-modal');
+    modal.append(document.getElementById('close-modal'), document.getElementById('prime-modal-title'), document.getElementById('modal-prime-info'));
     document.activeElement = document.getElementById('main-content');
     class Worker {
         constructor(url) {
@@ -407,4 +422,57 @@ test('manual controls recover a focused eviction block without relying on native
     h.complete();
     assert.equal(h.app.stream.segments[0].start, 2);
     assert.equal(h.document.activeElement.dataset.prime, '2');
+});
+
+
+test('open dialog cycles a single control in both Tab directions and ignores browser shortcuts', () => {
+    const h = harness(); h.complete();
+    const { app, document, listeners } = h;
+    const prime = app.ui['prime-container'].querySelector('.prime-number');
+    prime.focus();
+    app.ui['prime-modal'].scrollTop = 120;
+    app.showPrime(prime);
+    assert.equal(app.ui['prime-modal'].scrollTop, 0);
+    const close = app.ui['close-modal'];
+    const keydown = app.ui['prime-modal'].events.get('keydown');
+    for (const shiftKey of [false, false, true, true, false]) {
+        let prevented = false;
+        keydown({ key: 'Tab', shiftKey, preventDefault() { prevented = true; } });
+        assert.equal(prevented, true);
+        assert.equal(document.activeElement, close);
+    }
+    for (const event of [{ key: 'Escape' }, { key: 'Tab', ctrlKey: true }, { key: 'Tab', metaKey: true }, { key: 'Tab', altKey: true }, { key: 'Tab', defaultPrevented: true }]) {
+        keydown({ ...event, preventDefault() { assert.fail('Must leave shortcuts and already-handled events untouched'); } });
+    }
+    app.ui['prime-modal'].close();
+    assert.equal(document.activeElement, prime);
+    keydown({ key: 'Tab', preventDefault() { assert.fail('Closed dialog must not trap Tab'); } });
+    app.ui['load-more'].focus();
+    assert.equal(document.activeElement, app.ui['load-more']);
+});
+
+test('dialog traversal supports multiple controls, filtering and a heading fallback', () => {
+    const h = harness(); h.complete();
+    const { app, document, listeners } = h;
+    const modal = app.ui['prime-modal'];
+    const prime = app.ui['prime-container'].querySelector('.prime-number');
+    const extra = document.createElement('button');
+    const disabled = document.createElement('button'); disabled.disabled = true;
+    const hidden = document.createElement('button'); hidden.hidden = true;
+    const excluded = document.createElement('button'); excluded.tabIndex = -1;
+    const invisible = document.createElement('button'); invisible.visibility = 'hidden';
+    modal.append(disabled, extra, hidden, excluded, invisible);
+    prime.focus(); app.showPrime(prime);
+    const press = shiftKey => modal.events.get('keydown')({ key: 'Tab', shiftKey, preventDefault() {} });
+    press(false); assert.equal(document.activeElement, extra);
+    press(false); assert.equal(document.activeElement, app.ui['close-modal']);
+    press(true); assert.equal(document.activeElement, extra);
+    document.activeElement = document.getElementById('main-content');
+    press(true); assert.equal(document.activeElement, extra);
+    app.ui['close-modal'].hidden = true; extra.hidden = true;
+    press(false); assert.equal(document.activeElement, app.ui['prime-modal-title']);
+    assert.equal(listeners.has('document:keydown'), false, 'No global keyboard handler');
+    assert.equal(listeners.has('document:focusin'), false, 'Native inertness owns background focus');
+    modal.close();
+    assert.equal(document.activeElement, prime);
 });

@@ -26,3 +26,14 @@ The implementation environment could run the first two checks. It could **not** 
 ## Scope preserved
 
 No production service, API route, database, deployment configuration, original C/early JavaScript experiment, historical SQLite source, or old API-page asset is changed. The web quick start still omits optional sqlite3; the historical database scripts remain available for deliberate use.
+
+
+## Local acceptance follow-up: October 2, 2026
+
+The first local browser run on head `2e4cfb5` failed the detail-dialog Tab containment assertion. First-screen layouts, mobile disclosures, historical content and retry behavior were reported passing; Escape restored focus. Long forward/reverse scrolling was not verified because the extended diagnostic stalled.
+
+The follow-up explicitly cycles plain Tab and Shift+Tab through the open dialog, retains native Escape/background inertness, and restores the original prime after closing. Modified shortcuts and closed-dialog navigation remain untouched. Unit coverage includes the existing single-control dialog, multiple-control ordering, hidden/disabled controls, a focusable heading fallback, and closure. The handler is scoped to the dialog and leaves native background inertness in charge of outside focus.
+
+The revised browser runner uses bounded waits for actual range progress and logs active-element, document-focus, pending-request, range, and scroll state on failure. This avoids treating an idle instant before a scroll animation frame as successful progress, or chasing an automatically moving footer with pointer actionability retries. These are identified harness risks, not a confirmed explanation of the original local stall.
+
+Run the revised rendered suite on the new exact PR head. Its failure, timeout, absence, or an unrun stage is a failed gate; passing script-state tests does not establish native focus or scroll geometry. No revised-browser pass is claimed until that local run completes.
