@@ -21,11 +21,13 @@ async function deadline(promise, milliseconds, label) {
 async function snapshot(page) {
     return deadline(page.evaluate(() => {
         const app = window.primeApp;
+        const modal = document.querySelector('#prime-modal');
         const describe = node => node ? { tag: node.tagName, id: node.id, prime: node.dataset?.prime, index: node.dataset?.index, html: node.outerHTML?.slice(0, 240) } : null;
         const rect = node => node ? { top: node.getBoundingClientRect().top, bottom: node.getBoundingClientRect().bottom } : null;
         return {
             readyState: document.readyState, hidden: document.hidden, hasFocus: document.hasFocus(),
-            active: describe(document.activeElement), modalOpen: document.querySelector('#prime-modal')?.open,
+            active: describe(document.activeElement), modalOpen: modal?.open,
+            modalGeometry: modal ? { viewport: rect(modal), clientTop: modal.clientTop, clientHeight: modal.clientHeight, scrollTop: modal.scrollTop, scrollHeight: modal.scrollHeight, close: rect(document.querySelector('#close-modal')) } : null,
             pending: app?.pending ? { id: app.pending.id, direction: app.pending.direction, start: app.pending.start, end: app.pending.end, manual: app.pending.manual, focus: describe(app.pending.focus) } : null,
             requestId: app?.requestId, scrollFrame: app?.scrollFrame, errorDirection: app?.errorDirection,
             ranges: app?.stream.segments.map(s => ({ start: s.start, end: s.end, index: s.startIndex, count: s.primes.length })),
@@ -216,16 +218,18 @@ async function modalFocus(page) {
                     for (const key of ['Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Tab', 'Shift+Tab']) { await page.keyboard.press(key); await modalFocus(page); }
                     // Short landscape can scroll the only control out of view.
                     // Cycling must reveal that focused control inside the dialog.
-                    await page.locator('#prime-modal').evaluate(node => { node.scrollTop = node.scrollHeight; });
-                    await page.keyboard.press('Tab');
-                    await modalFocus(page);
-                    const visibleClose = await page.evaluate(() => {
-                        const dialog = document.querySelector('#prime-modal').getBoundingClientRect();
-                        const close = document.querySelector('#close-modal').getBoundingClientRect();
-                        return close.top >= dialog.top && close.bottom <= dialog.bottom;
-                    });
-                    assert.equal(visibleClose, true, 'Tab reveals Close within the scrollable dialog');
-                    assert.ok(Math.abs(await page.evaluate(() => scrollY) - y) <= 2, 'Internal modal scrolling must not move the page');
+                    for (const key of ['Tab', 'Shift+Tab']) {
+                        await page.locator('#prime-modal').evaluate(node => { node.scrollTop = node.scrollHeight; });
+                        await page.keyboard.press(key);
+                        await modalFocus(page);
+                        const visibleClose = await page.evaluate(() => {
+                            const dialog = document.querySelector('#prime-modal').getBoundingClientRect();
+                            const close = document.querySelector('#close-modal').getBoundingClientRect();
+                            return close.top >= dialog.top && close.bottom <= dialog.bottom;
+                        });
+                        assert.equal(visibleClose, true, `${key} reveals Close within the scrollable dialog`);
+                        assert.ok(Math.abs(await page.evaluate(() => scrollY) - y) <= 2, 'Internal modal scrolling must not move the page');
+                    }
                     await first.evaluate(node => node.focus()); // Background remains inert.
                     await modalFocus(page);
                     if (exit === 'Escape') await page.keyboard.press('Escape');

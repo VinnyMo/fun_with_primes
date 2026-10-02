@@ -39,6 +39,8 @@ function harness({ height = 768, workerFailures = 0 } = {}) {
             this.open = false;
             this.hidden = false;
             this.disabled = false;
+            this.scrollTop = 0;
+            this.clientTop = 0;
             this.tabIndex = tagName === 'button' ? 0 : -1;
             this.classList = { add: name => { this.className += ` ${name}`; } };
         }
@@ -69,10 +71,12 @@ function harness({ height = 768, workerFailures = 0 } = {}) {
         }
         querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
         closest(selector) { return this.matches(selector) ? this : this.parent?.closest(selector); }
-        focus() {
+        focus(options) {
+            this.lastFocusOptions = options;
             document.activeElement = this;
             listeners.get('document:focusin')?.({ target: this });
         }
+        get clientHeight() { return this.getBoundingClientRect().height; }
         getClientRects() { return this.hidden ? [] : [this.getBoundingClientRect()]; }
         showModal() { this.open = true; }
         close() { this.open = false; this.emit('close'); }
@@ -475,4 +479,56 @@ test('dialog traversal supports multiple controls, filtering and a heading fallb
     assert.equal(listeners.has('document:focusin'), false, 'Native inertness owns background focus');
     modal.close();
     assert.equal(document.activeElement, prime);
+});
+
+
+test('Tab explicitly reveals an already-focused control within a short dialog without moving the page', () => {
+    const h = harness(); h.complete();
+    const { app, document, window } = h;
+    const modal = app.ui['prime-modal'];
+    const close = app.ui['close-modal'];
+    const prime = app.ui['prime-container'].querySelector('.prime-number');
+    app.showPrime(prime);
+    modal.rect = { top: 16, bottom: 359, left: 186, right: 626, height: 343 };
+    modal.clientTop = 1;
+    Object.defineProperty(modal, 'clientHeight', { value: 341 });
+    close.getBoundingClientRect = () => ({ top: 41 - modal.scrollTop, bottom: 85 - modal.scrollTop, left: 540, right: 584, height: 44 });
+    window.scrollY = 412;
+    for (const shiftKey of [false, true]) {
+        modal.scrollTop = 220;
+        document.activeElement = close; // The precise reported native edge case.
+        modal.events.get('keydown')({ key: 'Tab', shiftKey, preventDefault() {} });
+        const box = close.getBoundingClientRect();
+        assert.equal(document.activeElement, close);
+        assert.equal(close.lastFocusOptions.preventScroll, true);
+        assert.ok(box.top >= modal.rect.top + modal.clientTop + 8);
+        assert.ok(box.bottom <= modal.rect.top + modal.clientTop + modal.clientHeight - 8);
+        assert.equal(modal.scrollTop, 16);
+        assert.equal(window.scrollY, 412);
+    }
+    const visibleTop = modal.scrollTop;
+    app.focusModalControl(close);
+    assert.equal(modal.scrollTop, visibleTop, 'No scroll when the control is already fully visible');
+});
+
+test('dialog visibility correction handles a control below the scrollport and clamps at zero', () => {
+    const h = harness(); h.complete();
+    const { app, document, window } = h;
+    const modal = app.ui['prime-modal'];
+    const extra = document.createElement('button');
+    modal.append(extra);
+    modal.rect = { top: 16, bottom: 359, left: 186, right: 626, height: 343 };
+    modal.clientTop = 1;
+    Object.defineProperty(modal, 'clientHeight', { value: 341 });
+    extra.getBoundingClientRect = () => ({ top: 400 - modal.scrollTop, bottom: 444 - modal.scrollTop, left: 200, right: 300, height: 44 });
+    window.scrollY = 700;
+    app.focusModalControl(extra);
+    assert.equal(modal.scrollTop, 94);
+    assert.equal(extra.getBoundingClientRect().bottom, 350);
+    assert.equal(window.scrollY, 700);
+    extra.getBoundingClientRect = () => ({ top: 16, bottom: 60, left: 200, right: 300, height: 44 });
+    modal.scrollTop = 1;
+    app.focusModalControl(extra);
+    assert.equal(modal.scrollTop, 0);
+    assert.equal(window.scrollY, 700);
 });

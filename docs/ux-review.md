@@ -37,3 +37,12 @@ The follow-up explicitly cycles plain Tab and Shift+Tab through the open dialog,
 The revised browser runner uses bounded waits for actual range progress and logs active-element, document-focus, pending-request, range, and scroll state on failure. This avoids treating an idle instant before a scroll animation frame as successful progress, or chasing an automatically moving footer with pointer actionability retries. These are identified harness risks, not a confirmed explanation of the original local stall.
 
 Run the revised rendered suite on the new exact PR head. Its failure, timeout, absence, or an unrun stage is a failed gate; passing script-state tests does not establish native focus or scroll geometry. No revised-browser pass is claimed until that local run completes.
+
+
+### Landscape visibility correction
+
+A local browser rerun of `230e09a` passed 126 stages, including focus containment and long forward/reverse scrolling in four viewports. It then failed the 812×375 check: scrolling the dialog internally and pressing Tab left Close focused but outside the visible dialog. The remaining landscape stages and no-JavaScript stage were not run; that run is not a complete browser pass.
+
+The next fix explicitly focuses with `preventScroll`, measures the control against the dialog’s client viewport, and adjusts only `dialog.scrollTop` to reveal it with an 8px focus-ring inset. It does not rely on refocusing to trigger native scrolling. Geometry regressions cover above-viewport, below-viewport, already-visible and clamped-top cases without changing page scroll. The original strict rendered visibility and page-position assertions remain; both Tab directions now run them, and failure output includes dialog scroll/rectangle data.
+
+Run the complete browser suite on the new exact head. The landscape fix remains unverified in a real browser until that run passes; previously passing stages must not be substituted for the complete current-head run.

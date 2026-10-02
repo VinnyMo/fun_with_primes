@@ -249,11 +249,28 @@ class PrimeGeneratorApp {
         if (!modal.open || event.defaultPrevented || event.key !== 'Tab' || event.ctrlKey || event.metaKey || event.altKey) return;
         const targets = this.modalFocusTargets();
         event.preventDefault();
-        if (!targets.length) { this.ui['prime-modal-title'].focus(); return; }
+        if (!targets.length) { this.focusModalControl(this.ui['prime-modal-title']); return; }
         const index = targets.indexOf(document.activeElement);
         const next = index < 0 ? (event.shiftKey ? targets.length - 1 : 0)
             : (index + (event.shiftKey ? -1 : 1) + targets.length) % targets.length;
-        targets[next].focus();
+        this.focusModalControl(targets[next]);
+    }
+
+    focusModalControl(target) {
+        const modal = this.ui['prime-modal'];
+        // Re-focusing an already-focused control does not reliably reveal it.
+        // Measure the actual scrollport, then scroll only the dialog; neither
+        // focus() nor scrollIntoView() should move the underlying prime list.
+        target.focus({ preventScroll: true });
+        const viewport = modal.getBoundingClientRect();
+        const control = target.getBoundingClientRect();
+        const top = viewport.top + modal.clientTop;
+        const bottom = top + modal.clientHeight;
+        const inset = 8;
+        let delta = 0;
+        if (control.top < top + inset) delta = control.top - top - inset;
+        else if (control.bottom > bottom - inset) delta = control.bottom - bottom + inset;
+        if (delta) modal.scrollTop = Math.max(0, modal.scrollTop + delta);
     }
 
     showPrime(button) {
