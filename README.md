@@ -1,14 +1,21 @@
-# 🔢 Fun With Primes
+# Fun With Primes
 
-A personal showcase of prime-number experiments, from C command-line programs to an interactive browser app.
+A scrolling prime-number explorer, with the earlier C and JavaScript experiments kept alongside it.
 
 [Try the hosted demo](https://vincentmossman.com/prime-generator/)
 
-The current web app generates primes in your browser. Scroll to generate more, then click a prime to explore its properties. This is a legacy learning project; the older C and database experiments are still here to explore.
+The current web app generates primes in your browser. Scroll to generate more, then click a prime to explore its properties. The live app is a small, client-side learning project. Its museum panel connects the current browser version with the older C and database experiments.
+
+## At a glance
+
+- **Try it:** scroll for more primes and select a number to inspect its properties
+- **Runs on your device:** one Web Worker, bounded segmented sieving, no prime database or backend prime API
+- **Practical bounds:** at most 12 retained segments and a session ceiling of 1 trillion
+- **Explore the history:** open the museum panel, or browse the original C and early JavaScript below
 
 ## Project history
 
-This project started with Vincent T. Mossman's [`funWithPrimes`](https://github.com/VinnyMo/funWithPrimes), the original C and early JavaScript research repository. It remains a legacy showcase of those experiments, including [`threadPartialSieve`](https://github.com/VinnyMo/funWithPrimes/blob/master/eratosthenes.c#L168-L182), which divides sieve-marking work across POSIX threads using a shared flag array.
+This project started with Vincent T. Mossman's [`funWithPrimes`](https://github.com/VinnyMo/funWithPrimes), the original C and early JavaScript research repository. It remains a legacy showcase of those experiments, including [`threadPartialSieve`](https://github.com/VinnyMo/funWithPrimes/blob/master/eratosthenes.c#L168-L182), which divides sieve-marking work across POSIX threads using a shared flag array. Its mutable global thread count defaults to four; four is not a fixed algorithmic limit. The historical concurrency review remains open in [issue #5](https://github.com/VinnyMo/fun_with_primes/issues/5).
 
 This later repository carries forward the original C sources and adds the browser app described below. The active browser generator is a separate [JavaScript Web Worker implementation](public/js/prime-worker.js).
 
@@ -129,4 +136,4 @@ Feel free to open issues or submit PRs. Keep changes focused and include the ste
 
 ## License
 
-MIT License - Built with ❤️ by Vincent Mossman.
+The package declares an MIT license. By Vincent Mossman.
